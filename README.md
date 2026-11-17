@@ -26,4 +26,4 @@ Voir `docs/RGPD.md`. En bref : le dépôt ne contient aucune donnée ; l'export 
 - `npm test` (Node ≥ 20) : 23 tests (lecture des exports, planification, exports, construction et sécurité).
 - `npm run build` régénère `index.html`, `sw.js` (avec sa version) et recopie `public/` ; ne pas modifier ces fichiers à la main. Un test et l'intégration continue (`.github/workflows/test.yml`) vérifient qu'ils sont à jour.
 - Leaflet 1.9.4 est inclus dans `vendor/` (licence BSD-2) ; le mettre à jour à la main.
-- Pour publier : GitHub Pages sur la branche `master`, ou Cloudflare Pages / Netlify avec un dépôt privé.
+- Publication et installation sur téléphone : voir `docs/PUBLIER.md`.
