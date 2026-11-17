@@ -27,8 +27,8 @@ async function compute(){
 $("mgo").onclick=compute;
 
 async function computeInner(){
-  const rows=readRows().filter(t=>t.n||t.h);
-  if(!rows.length||rows.some(t=>t.h.length<6))return msg("mmsg","Indique le domicile de chaque technicien (départ et retour).","err");
+  const all=readRows().filter(t=>t.n||t.h),rows=all.filter(t=>t.h.length>=6);   // sans domicile : non planifié
+  if(!rows.length)return msg("mmsg","Indique le domicile d’au moins un technicien (départ et retour).","err");
   if(rows.length>1&&rows.some(t=>!t.n))return msg("mmsg","Indique le prénom de chaque technicien.","err");
   saveRows();saveOpts();
   const dates=horizon(),defDur=Math.max(5,+$("mdur").value||30)*60;

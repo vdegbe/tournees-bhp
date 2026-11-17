@@ -49,5 +49,10 @@ $("mcsv").onchange=async ev=>{
     const cnt={};ST.units.forEach(u=>(u.slots||[]).forEach(s=>cnt[s.date]=(cnt[s.date]||0)+1));
     const today=iso(new Date());let note="";
     if(!cnt[today]&&Object.keys(cnt).length){const best=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]||(a<b?-1:1))[0];$("mdate").value=best;note=` Premier jour réglé sur le ${EXP.dfr(best)} (le plus chargé de l’export).`}
+    // techniciens prévus ce jour-là dans l'export : ajoutés à la liste (le domicile reste à saisir)
+    const day=$("mdate").value,have=readRows().filter(t=>t.n||t.h),fresh=[];
+    ST.units.forEach(u=>(u.slots||[]).forEach(s=>{const n=normName(s.tech);
+      if(s.date===day&&n&&![...have,...fresh].some(t=>TW.nameMatch(t.n,n)||TW.nameMatch(n,t.n)))fresh.push({n,h:""})}));
+    if(fresh.length){drawRows(have.concat(fresh));saveRows();note+=` ${fresh.length} technicien(s) du ${EXP.dfr(day)} ajouté(s) à la liste : renseigne leur domicile, ou retire ceux que tu ne veux pas planifier.`}
     msg("mmsg",`${f.name} : ${ST.units.length} intervention(s) avec adresse${skipped?`, ${skipped} sans adresse exploitable (ignorée(s))`:""}.${note}`,"ok");mrender()}
   catch(e){msg("mmsg","Erreur : "+e.message,"err")}};

@@ -1201,6 +1201,11 @@ $("mcsv").onchange=async ev=>{
     const cnt={};ST.units.forEach(u=>(u.slots||[]).forEach(s=>cnt[s.date]=(cnt[s.date]||0)+1));
     const today=iso(new Date());let note="";
     if(!cnt[today]&&Object.keys(cnt).length){const best=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]||(a<b?-1:1))[0];$("mdate").value=best;note=` Premier jour réglé sur le ${EXP.dfr(best)} (le plus chargé de l’export).`}
+    // techniciens prévus ce jour-là dans l'export : ajoutés à la liste (le domicile reste à saisir)
+    const day=$("mdate").value,have=readRows().filter(t=>t.n||t.h),fresh=[];
+    ST.units.forEach(u=>(u.slots||[]).forEach(s=>{const n=normName(s.tech);
+      if(s.date===day&&n&&![...have,...fresh].some(t=>TW.nameMatch(t.n,n)||TW.nameMatch(n,t.n)))fresh.push({n,h:""})}));
+    if(fresh.length){drawRows(have.concat(fresh));saveRows();note+=` ${fresh.length} technicien(s) du ${EXP.dfr(day)} ajouté(s) à la liste : renseigne leur domicile, ou retire ceux que tu ne veux pas planifier.`}
     msg("mmsg",`${f.name} : ${ST.units.length} intervention(s) avec adresse${skipped?`, ${skipped} sans adresse exploitable (ignorée(s))`:""}.${note}`,"ok");mrender()}
   catch(e){msg("mmsg","Erreur : "+e.message,"err")}};
 
@@ -1233,8 +1238,8 @@ async function compute(){
 $("mgo").onclick=compute;
 
 async function computeInner(){
-  const rows=readRows().filter(t=>t.n||t.h);
-  if(!rows.length||rows.some(t=>t.h.length<6))return msg("mmsg","Indique le domicile de chaque technicien (départ et retour).","err");
+  const all=readRows().filter(t=>t.n||t.h),rows=all.filter(t=>t.h.length>=6);   // sans domicile : non planifié
+  if(!rows.length)return msg("mmsg","Indique le domicile d’au moins un technicien (départ et retour).","err");
   if(rows.length>1&&rows.some(t=>!t.n))return msg("mmsg","Indique le prénom de chaque technicien.","err");
   saveRows();saveOpts();
   const dates=horizon(),defDur=Math.max(5,+$("mdur").value||30)*60;
