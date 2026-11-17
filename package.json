@@ -1,0 +1,7 @@
+{
+  "name": "tournees-bhp",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test test/*.test.mjs", "build": "node build/build.mjs" },
+  "engines": { "node": ">=20" }
+}
