@@ -22,14 +22,14 @@ function fromRow(r){
   const client=(r.client||"").split(/\r?\n/)[0].trim();
   return{twimm:(r.ntwimm||"").trim(),type:(r.type||"").trim(),site:(r.nomsite||"").trim(),client,
     adresse,cp,ville:U2(ville),etage:ep.etage,porte:ep.porte,quality,
-    consigne:(r.contraintes||"").replace(/\s+/g," ").trim(),statut:(r.statut||"").trim()}}
+    consigne:(r.contraintes||"").replace(/\s+/g," ").trim(),statut:(r.statut||"").trim(),slots:TW.slots(r),cwin:TW.consigneWin(r.contraintes)}}
 
 // Adresses collées à la main : une par ligne, « adresse CP ville | note facultative »
 function fromPaste(text){
   return String(text||"").split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(l=>{
     const [a,...n]=l.split("|");const full=a.trim().replace(/\s+/g," ");
     const m=/(\d{5})\s+(.+)$/.exec(full);
-    return{twimm:"",type:"",site:"",client:"",adresse:m?full.slice(0,m.index).trim():full,cp:m?m[1]:"",ville:m?U2(m[2]):"",etage:"",porte:"",quality:"ok",consigne:n.join("|").trim(),statut:"",full}})}
+    return{twimm:"",type:"",site:"",client:"",adresse:m?full.slice(0,m.index).trim():full,cp:m?m[1]:"",ville:m?U2(m[2]):"",etage:"",porte:"",quality:"ok",consigne:n.join("|").trim(),statut:"",slots:[],cwin:null,full}})}
 
 const queryOf=a=>a.full||[a.adresse,a.cp,a.ville].filter(Boolean).join(" ");
 const geoUrl=a=>"https://api-adresse.data.gouv.fr/search/?limit=1&q="+encodeURIComponent(queryOf(a))+(/^\d{5}$/.test(a.cp)?"&postcode="+a.cp:"");
@@ -63,13 +63,30 @@ const roadKm=k=>k*1.3;
 const q=p=>p.lat.toFixed(6)+","+p.lng.toFixed(6);
 const gStop=p=>"https://www.google.com/maps/dir/?api=1&travelmode=driving&destination="+q(p);
 const wazeStop=p=>"https://waze.com/ul?navigate=yes&ll="+q(p);
-// Google Maps accepte 9 étapes par lien : la tournée est découpée en parties
-function gTour(home,pts,order){
-  const stops=order.map(i=>pts[i]),out=[];
+// Google Maps accepte 9 étapes par lien : la tournée est découpée en parties. end = point d'arrivée, ou null pour finir au dernier arrêt.
+function gTour(start,pts,order,end){
+  const stops=order.map(i=>pts[i]),out=[];if(!stops.length)return out;
   for(let i=0;i<stops.length;i+=9){
-    const part=stops.slice(i,i+9),last=i+9>=stops.length;
-    const origin=i===0?home:stops[i-1],dest=last?home:part[part.length-1],way=last?part:part.slice(0,-1);
+    const part=stops.slice(i,i+9),last=i+9>=stops.length,origin=i===0?start:stops[i-1];
+    let dest,way;
+    if(!last){dest=part[part.length-1];way=part.slice(0,-1)}
+    else if(end){dest=end;way=part}
+    else{dest=part[part.length-1];way=part.slice(0,-1)}
     out.push("https://www.google.com/maps/dir/?api=1&travelmode=driving&origin="+q(origin)+"&destination="+q(dest)+(way.length?"&waypoints="+encodeURIComponent(way.map(q).join("|")):""))}
   return out}
 
-return{fromRow,fromPaste,queryOf,geoUrl,geoPick,hav,loopLen,plan,roadKm,gStop,wazeStop,gTour,fixNum}})();
+// ---- matrice des trajets : service routier (OSRM) si disponible, sinon estimation ----
+const OSRM="https://router.project-osrm.org";
+const osrmUrl=pts=>OSRM+"/table/v1/driving/"+pts.map(p=>p.lng.toFixed(6)+","+p.lat.toFixed(6)).join(";")+"?annotations=duration,distance";
+function fallbackLeg(a,b){const m=hav(a,b)*1300;return{sec:Math.round(m/1000/(m<8000?25:45)*3600),m:Math.round(m)}}
+// json : réponse OSRM ou null. Chaque trajet absent de la réponse est estimé.
+function matrix(pts,json){
+  const n=pts.length,T=[],D=[];let exact=0,total=0;
+  for(let i=0;i<n;i++){T.push([]);D.push([]);for(let j=0;j<n;j++){
+    if(i===j){T[i].push(0);D[i].push(0);continue}total++;
+    const s=json&&json.durations&&json.durations[i]&&json.durations[i][j],m=json&&json.distances&&json.distances[i]&&json.distances[i][j];
+    if(typeof s==="number"&&typeof m==="number"&&isFinite(s)&&isFinite(m)){T[i].push(Math.round(s));D[i].push(Math.round(m));exact++}
+    else{const f=fallbackLeg(pts[i],pts[j]);T[i].push(f.sec);D[i].push(f.m)}}}
+  return{t:(i,j)=>T[i][j],d:(i,j)=>D[i][j],exact:total?exact/total:1}}
+
+return{fromRow,fromPaste,queryOf,geoUrl,geoPick,hav,loopLen,plan,roadKm,gStop,wazeStop,gTour,fixNum,osrmUrl,matrix,fallbackLeg}})();

@@ -3,7 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; connect-src 'self' https://api-adresse.data.gouv.fr https://router.project-osrm.org; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#d41c1c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Tournées des techniciens</title>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
@@ -13,6 +18,7 @@
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
 main{max-width:720px;margin:0 auto;padding:16px}
 h1{font-size:20px;margin:4px 0 14px;color:var(--red)}
+.tabs{display:flex;gap:6px;margin-bottom:12px}.tabs button{flex:1}
 button{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;padding:10px 12px;cursor:pointer}
 button.on,button.pri{background:var(--red);color:#fff;border-color:var(--red)}
 button:disabled{opacity:.5}
@@ -38,7 +44,17 @@ input[type=checkbox]{width:18px;height:18px;min-width:18px;min-height:0;padding:
 .btnlink{display:block;text-align:center;text-decoration:none;font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;padding:10px 12px}
 .stop{padding:10px}.stop .tools{margin:8px 0 0}.num{flex:none;width:28px;height:28px;border-radius:50%;background:var(--red);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center}
 .mk span{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--red);color:#fff;font-weight:700;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}.mk.home span{background:#1d1d1f}
-@media print{body{background:#fff;color:#000}h1,#inputs,.noprint{display:none!important}.card{break-inside:avoid;border-color:#999}}
+@media print{body{background:#fff;color:#000}h1,.tabs,#inputs,.noprint,#field,#p2,#p3{display:none!important}.card{break-inside:avoid;border-color:#999}}
+.trow{display:grid;grid-template-columns:110px 1fr 38px;gap:8px;margin-top:8px}.trow button{padding:6px}
+summary{cursor:pointer;color:var(--mut);font-size:13px}
+.res{padding:12px}.res h2{font-size:16px;margin:0 0 2px}.badge{display:inline-block;font-size:11px;padding:1px 8px;border-radius:9px;border:1px solid var(--bd);color:var(--mut)}
+.badge.fait{color:var(--ok);border-color:var(--ok)}.badge.absent,.badge.impossible{color:var(--warn);border-color:var(--warn)}
+.time{font-weight:700;font-variant-numeric:tabular-nums}
+#field{position:fixed;inset:0;z-index:2000;background:var(--bg);overflow:auto;padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px))}
+#field .big{font-size:20px;font-weight:700;margin:6px 0}#field .tools button,#field .tools a{padding:16px 12px;font-size:16px}
+.bar{height:8px;background:var(--bd);border-radius:4px;overflow:hidden;margin:6px 0 12px}.bar i{display:block;height:100%;background:var(--ok)}
+table.mo{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}table.mo td,table.mo th{padding:5px 4px;border-top:1px solid var(--bd);text-align:right}table.mo th:first-child,table.mo td:first-child{text-align:left}
+.res+.res{break-before:page}
 
 /* required styles */
 
@@ -708,33 +724,68 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <datalist id="names"></datalist>
 <main>
 <h1>Tournées des techniciens</h1>
-<div class="card">
-  <div class="grid">
-   <div><label>Technicien (prénom)</label><input id="mtech" list="names" autocomplete="off"></div>
-   <div><label>Domicile : départ et retour</label><input id="mhome" placeholder="n° rue, code postal, ville" autocomplete="off"></div>
+<div class="tabs"><button id="t1" class="on">Tournée</button><button id="t2">Bilan</button><button id="t3">Données</button></div>
+
+<section id="p1">
+ <div id="inputs">
+  <div class="card">
+   <b>Techniciens</b>
+   <div id="trows"></div>
+   <div class="tools"><button id="tadd">+ Ajouter un technicien</button></div>
+   <div class="msg">Le domicile est le départ et le retour. Il reste mémorisé dans ce navigateur seulement : il n’est pas écrit sur la fiche. Pour le placer sur la carte, l’adresse est envoyée au service d’adresses de l’État, et le lien de navigation de la tournée complète contient ses coordonnées.</div>
+   <details style="margin-top:8px"><summary>Options de la journée</summary>
+    <div class="grid" style="margin-top:8px">
+     <div><label>Premier jour</label><input id="mdate" type="date"></div>
+     <div><label>Nombre de jours</label><input id="mdays" type="number" min="1" max="10" value="1"></div>
+     <div class="full"><label style="display:flex;gap:8px;align-items:center;color:var(--tx)"><input type="checkbox" id="mwk" checked> Jours ouvrés seulement (lundi au vendredi)</label></div>
+     <div><label>Départ</label><input id="mstart" type="time" value="08:00"></div>
+     <div><label>Fin de journée</label><input id="mend" type="time" value="17:30"></div>
+     <div class="full"><label>Durée par défaut d’une intervention (minutes)</label><input id="mdur" type="number" min="5" max="480" value="30"></div>
+     <div><label>Point de départ</label><select id="mfrom"><option value="home">Domicile</option><option value="depot">Adresse commune</option></select></div>
+     <div><label>Fin de tournée</label><select id="mto"><option value="home">Retour au domicile</option><option value="last">Dernier arrêt</option><option value="depot">Adresse commune</option></select></div>
+     <div class="full"><label>Adresse commune (dépôt), si choisie ci-dessus</label><input id="mdepot" placeholder="n° rue, code postal, ville"></div>
+    </div>
+   </details>
   </div>
-  <div class="msg">Le domicile reste enregistré dans ce navigateur seulement. Il n’est ni dans l’historique partagé ni écrit sur la fiche. Pour le placer sur la carte, l’adresse est envoyée au service d’adresses de l’État (api-adresse.data.gouv.fr), et le lien de navigation contient ses coordonnées.</div>
-  <label style="margin-top:10px">Export twimm des interventions du jour (.csv)</label>
-  <input id="mcsv" type="file" accept=".csv,text/csv,text/plain">
-  <label style="margin-top:10px">Ou adresses à la main (une par ligne : adresse code postal ville | note)</label>
-  <textarea id="mpaste" rows="3" placeholder="3 allée Plon et Nourrit 77100 Nanteuil-lès-Meaux | code porte 1234"></textarea>
-  <div class="msg" id="mmsg"></div>
+  <div class="card">
+   <label>Export twimm des interventions (.csv)</label>
+   <input id="mcsv" type="file" accept=".csv,text/csv,text/plain">
+   <label style="margin-top:10px">Ou adresses à la main (une par ligne : adresse code postal ville | note)</label>
+   <textarea id="mpaste" rows="3" placeholder="3 allée Plon et Nourrit 77100 Nanteuil-lès-Meaux | code porte 1234"></textarea>
+   <div class="msg" id="mmsg"></div>
+  </div>
+  <div class="card hide" id="mpick">
+   <b>Interventions à inclure</b>
+   <div class="tools"><button id="mall">Tout cocher</button><button id="mnone">Tout décocher</button></div>
+   <div id="mlist"></div>
+  </div>
+  <button class="pri" id="mgo" style="width:100%;margin-bottom:12px">Calculer les tournées</button>
  </div>
- <div class="card hide" id="mpick">
-  <b>Interventions à inclure</b>
-  <div class="tools"><button id="mall">Tout cocher</button><button id="mnone">Tout décocher</button></div>
-  <div id="mlist"></div>
- </div>
- <button class="pri" id="mgo" style="width:100%;margin-bottom:12px">Calculer la tournée</button>
- </div>
- <div id="mfiche" class="hide">
-  <div class="card"><b id="mtitle"></b><div class="msg" id="msum"></div>
-   <div id="mmap" style="height:320px;border-radius:10px;margin-top:8px"></div>
-   <div class="msg">Tracé à vol d’oiseau : l’ordre des visites est calculé pour limiter les trajets, les distances par la route sont estimées (× 1,3).</div>
-   <div class="tools" id="mtour"></div>
-   <div class="tools noprint"><button id="mprint">Imprimer / enregistrer en PDF</button></div></div>
-  <div id="mstops"></div>
- </div>
+ <div id="mres" class="hide"></div>
+</section>
+
+<section id="p2" class="hide">
+ <div class="card"><b>Bilan cumulé</b><div id="bsum" class="msg"></div><div id="bmonths"></div>
+  <div class="tools"><button id="bcsv">Télécharger le bilan (CSV)</button></div></div>
+ <div class="card"><b>Hypothèses de coût (modifiables)</b>
+  <div class="grid" style="margin-top:8px">
+   <div><label>Consommation (L / 100 km)</label><input id="cl" type="number" step="0.1" min="0" placeholder="ex. 7"></div>
+   <div><label>Prix du carburant (€ / L)</label><input id="cp" type="number" step="0.01" min="0" placeholder="ex. 1,80"></div>
+   <div class="full"><label>Coût horaire d’un technicien (€ / h)</label><input id="ch" type="number" step="0.5" min="0" placeholder="facultatif"></div>
+  </div>
+  <div class="msg">Le bilan compare, pour les mêmes arrêts, l’ordre des lignes de l’export twimm et l’ordre calculé. Il est mémorisé dans ce navigateur seulement (aucune adresse n’y figure).</div></div>
+</section>
+
+<section id="p3" class="hide">
+ <div class="card"><b>Données de cet appareil</b>
+  <div class="msg" style="color:var(--tx)">Mémorisés ici seulement : les domiciles saisis, les adresses déjà localisées (30 jours), la dernière tournée (48 heures), les corrections d’adresses, l’avancement des tournées et le bilan cumulé. Rien n’est envoyé à un serveur du projet.</div>
+  <div class="tools"><button id="dclear">Effacer toutes les données de cet appareil</button><button id="dinstall" class="hide">Installer l’application</button></div>
+  <div class="msg" id="dmsg"></div></div>
+ <div class="card"><b>Services externes utilisés</b>
+  <div class="msg" style="color:var(--tx)">Base Adresse Nationale (api-adresse.data.gouv.fr) : adresses et domiciles, pour les placer sur la carte.<br>
+  OSRM (router.project-osrm.org) : coordonnées des points, pour calculer les temps et distances par la route. Service public de démonstration : sans lui, l’application estime les trajets.<br>
+  OpenStreetMap : fond de carte. Google Maps et Waze : seulement quand tu appuies sur un lien de navigation.</div></div>
+</section>
 </main>
 <script>/* @preserve
  * Leaflet 1.9.4, a JS library for interactive maps. https://leafletjs.com
@@ -745,8 +796,23 @@ svg.leaflet-image-layer.leaflet-interactive path {
 <script>
 // ---------- outils de base ----------
 const $=id=>document.getElementById(id);
-const ls={g(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},s(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const ls={g(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},s(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},d(k){try{localStorage.removeItem(k)}catch(e){}}};
 const normName=v=>(v||"").trim().replace(/\s+/g," ").toLowerCase().replace(/(^|[\s'-])(\p{L})/gu,(m,a,b)=>a+b.toUpperCase());
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const toSec=v=>{const m=/^(\d{1,2}):(\d{2})/.exec(v||"");return m?(+m[1])*3600+(+m[2])*60:null};
+const fmtKm=m=>{const k=m/1000;return k.toFixed(k<10?1:0).replace(".",",")+" km"};
+const fmtMin=s=>{const m=Math.round(s/60);return m<60?m+" min":Math.floor(m/60)+" h "+String(m%60).padStart(2,"0")};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+// état commun : unités lues (export ou saisie), dernier plan calculé
+const ST={units:[],plan:null,maps:[]};
+const msg=(id,t,c)=>{const m=$(id);if(m){m.className="msg "+(c||"");m.textContent=t}};
+function download(name,text,type){const a=document.createElement("a"),u=URL.createObjectURL(new Blob([text],{type:type||"text/plain;charset=utf-8"}));
+  a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
+async function shareOrCopy(title,text,statusId){
+  try{if(navigator.share){await navigator.share({title,text});return}}catch(e){if(e&&e.name==="AbortError")return}
+  try{await navigator.clipboard.writeText(text);msg(statusId,"Texte copié : colle-le dans un message ou un e-mail.","ok")}
+  catch(e){msg(statusId,"Copie impossible sur cet appareil.","err")}}
 
 // ---------- lecture de l'export twimm (CSV) : colonnes, adresse du logement, étage et porte ----------
 const TW=(()=>{
@@ -802,7 +868,28 @@ function findEtagePorte(rest){
   else{const g=/\b(GAUCHE|DROITE)\b/.exec(rest);if(g)p=g[1]}
   return{etage:e,porte:p}}
 
-return{decode,parseCSV,findAddress,findEtagePorte}})();
+// ---- créneaux prévus, technicien prévu, consignes horaires ----
+const dt=s=>{const m=/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/.exec(s||"");return m?{date:`${m[3]}-${m[2]}-${m[1]}`,sec:(+m[4])*3600+(+m[5])*60}:null};
+const lines=x=>(x||"").split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+// « Début/Fin passages prévus » et « Passages prévus » (techniciens) sont alignés ligne à ligne
+function slots(r){
+  const d=lines(r.debutpassagesprevus),f=lines(r.finpassagesprevus),t=lines(r.passagesprevus);
+  return d.map((s,i)=>{const a=dt(s),b=dt(f[i]);if(!a)return null;
+    return{date:a.date,start:a.sec,end:b&&b.date===a.date&&b.sec>a.sec?b.sec:a.sec+1800,tech:t.length===d.length?t[i]:""}}).filter(Boolean)}
+// « à partir de 10h00 », « avant 17h », « entre 9h et 12h » ; « pour le 07/09 » limite la consigne à ce jour
+function consigneWin(txt){
+  const t=strip(txt||"").toUpperCase().replace(/\s+/g," ");const hm=(h,m)=>(+h)*3600+(+(m||0))*60;
+  let ws=null,we=null,m=/ENTRE (\d{1,2}) ?H ?(\d{2})? ET (\d{1,2}) ?H ?(\d{2})?/.exec(t);
+  if(m){ws=hm(m[1],m[2]);we=hm(m[3],m[4])}
+  else{m=/A PARTIR DE (\d{1,2}) ?H ?(\d{2})?/.exec(t);if(m)ws=hm(m[1],m[2]);
+    m=/AVANT (\d{1,2}) ?H ?(\d{2})?/.exec(t);if(m)we=hm(m[1],m[2])}
+  if(ws==null&&we==null)return null;
+  const d=/POUR LE (\d{2})\/(\d{2})/.exec(t);return{ws,we,md:d?d[2]+"-"+d[1]:null}}
+// « Patrick » correspond à « Patrick MACHADO » : chaque mot saisi doit figurer dans le nom prévu
+const nameTok=s=>strip(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim().split(" ").filter(Boolean);
+function nameMatch(entry,planned){const e=nameTok(entry),p=nameTok(planned);return e.length>0&&e.every(w=>p.includes(w))}
+
+return{decode,parseCSV,findAddress,findEtagePorte,slots,consigneWin,nameMatch}})();
 
 // ---------- carte : adresses, ordre de passage, liens (fonctions pures, sans réseau) ----------
 // Dépend de : TW (10-twimm.js)
@@ -828,14 +915,14 @@ function fromRow(r){
   const client=(r.client||"").split(/\r?\n/)[0].trim();
   return{twimm:(r.ntwimm||"").trim(),type:(r.type||"").trim(),site:(r.nomsite||"").trim(),client,
     adresse,cp,ville:U2(ville),etage:ep.etage,porte:ep.porte,quality,
-    consigne:(r.contraintes||"").replace(/\s+/g," ").trim(),statut:(r.statut||"").trim()}}
+    consigne:(r.contraintes||"").replace(/\s+/g," ").trim(),statut:(r.statut||"").trim(),slots:TW.slots(r),cwin:TW.consigneWin(r.contraintes)}}
 
 // Adresses collées à la main : une par ligne, « adresse CP ville | note facultative »
 function fromPaste(text){
   return String(text||"").split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(l=>{
     const [a,...n]=l.split("|");const full=a.trim().replace(/\s+/g," ");
     const m=/(\d{5})\s+(.+)$/.exec(full);
-    return{twimm:"",type:"",site:"",client:"",adresse:m?full.slice(0,m.index).trim():full,cp:m?m[1]:"",ville:m?U2(m[2]):"",etage:"",porte:"",quality:"ok",consigne:n.join("|").trim(),statut:"",full}})}
+    return{twimm:"",type:"",site:"",client:"",adresse:m?full.slice(0,m.index).trim():full,cp:m?m[1]:"",ville:m?U2(m[2]):"",etage:"",porte:"",quality:"ok",consigne:n.join("|").trim(),statut:"",slots:[],cwin:null,full}})}
 
 const queryOf=a=>a.full||[a.adresse,a.cp,a.ville].filter(Boolean).join(" ");
 const geoUrl=a=>"https://api-adresse.data.gouv.fr/search/?limit=1&q="+encodeURIComponent(queryOf(a))+(/^\d{5}$/.test(a.cp)?"&postcode="+a.cp:"");
@@ -869,121 +956,488 @@ const roadKm=k=>k*1.3;
 const q=p=>p.lat.toFixed(6)+","+p.lng.toFixed(6);
 const gStop=p=>"https://www.google.com/maps/dir/?api=1&travelmode=driving&destination="+q(p);
 const wazeStop=p=>"https://waze.com/ul?navigate=yes&ll="+q(p);
-// Google Maps accepte 9 étapes par lien : la tournée est découpée en parties
-function gTour(home,pts,order){
-  const stops=order.map(i=>pts[i]),out=[];
+// Google Maps accepte 9 étapes par lien : la tournée est découpée en parties. end = point d'arrivée, ou null pour finir au dernier arrêt.
+function gTour(start,pts,order,end){
+  const stops=order.map(i=>pts[i]),out=[];if(!stops.length)return out;
   for(let i=0;i<stops.length;i+=9){
-    const part=stops.slice(i,i+9),last=i+9>=stops.length;
-    const origin=i===0?home:stops[i-1],dest=last?home:part[part.length-1],way=last?part:part.slice(0,-1);
+    const part=stops.slice(i,i+9),last=i+9>=stops.length,origin=i===0?start:stops[i-1];
+    let dest,way;
+    if(!last){dest=part[part.length-1];way=part.slice(0,-1)}
+    else if(end){dest=end;way=part}
+    else{dest=part[part.length-1];way=part.slice(0,-1)}
     out.push("https://www.google.com/maps/dir/?api=1&travelmode=driving&origin="+q(origin)+"&destination="+q(dest)+(way.length?"&waypoints="+encodeURIComponent(way.map(q).join("|")):""))}
   return out}
 
-return{fromRow,fromPaste,queryOf,geoUrl,geoPick,hav,loopLen,plan,roadKm,gStop,wazeStop,gTour,fixNum}})();
+// ---- matrice des trajets : service routier (OSRM) si disponible, sinon estimation ----
+const OSRM="https://router.project-osrm.org";
+const osrmUrl=pts=>OSRM+"/table/v1/driving/"+pts.map(p=>p.lng.toFixed(6)+","+p.lat.toFixed(6)).join(";")+"?annotations=duration,distance";
+function fallbackLeg(a,b){const m=hav(a,b)*1300;return{sec:Math.round(m/1000/(m<8000?25:45)*3600),m:Math.round(m)}}
+// json : réponse OSRM ou null. Chaque trajet absent de la réponse est estimé.
+function matrix(pts,json){
+  const n=pts.length,T=[],D=[];let exact=0,total=0;
+  for(let i=0;i<n;i++){T.push([]);D.push([]);for(let j=0;j<n;j++){
+    if(i===j){T[i].push(0);D[i].push(0);continue}total++;
+    const s=json&&json.durations&&json.durations[i]&&json.durations[i][j],m=json&&json.distances&&json.distances[i]&&json.distances[i][j];
+    if(typeof s==="number"&&typeof m==="number"&&isFinite(s)&&isFinite(m)){T[i].push(Math.round(s));D[i].push(Math.round(m));exact++}
+    else{const f=fallbackLeg(pts[i],pts[j]);T[i].push(f.sec);D[i].push(f.m)}}}
+  return{t:(i,j)=>T[i][j],d:(i,j)=>D[i][j],exact:total?exact/total:1}}
 
-// ---------- onglet Carte : tournée depuis le domicile, fiche du technicien ----------
-const MP={all:[],map:null};
-const mmsg=(t,c)=>{const m=$("mmsg");m.className="msg "+(c||"");m.textContent=t};
-const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const homeKey=()=>"home:"+normName($("mtech").value).toLowerCase();
+return{fromRow,fromPaste,queryOf,geoUrl,geoPick,hav,loopLen,plan,roadKm,gStop,wazeStop,gTour,fixNum,osrmUrl,matrix,fallbackLeg}})();
 
-$("mtech").oninput=()=>{$("mhome").value=ls.g(homeKey())||""};
-$("mtech").onchange=$("mtech").oninput;
-$("mhome").onchange=()=>{const h=$("mhome").value.trim();if(normName($("mtech").value))ls.s(homeKey(),h)};
-const techs=ls.g("techs")||[];
-$("names").innerHTML=techs.map(n=>`<option value="${esc(n)}">`).join("");
-$("mtech").value=ls.g("tech")||"";$("mtech").oninput();
+// ---------- planification : visites, arrêts, répartition, ordre de passage (fonctions pures) ----------
+// Dépend de : TW
+const SCH=(()=>{
+const LATE_W=10,OVER_W=5,BAL=0.15,DAYPEN=3600;
+const etNum=e=>{e=String(e||"").trim().toUpperCase();if(e==="RDC")return 0;const n=parseInt(e,10);return isNaN(n)?99:n};
 
-function mlabel(a){return `${esc(a.adresse)}, ${esc(a.cp)} ${esc(a.ville)}`}
+// Une ligne twimm (ou adresse collée) devient une visite par créneau prévu dans la période ; sans créneau : une visite libre.
+// Un créneau prévu pour un autre technicien que ceux saisis écarte la visite (elle n'est pas pour cette tournée).
+function visits(units,dates,techs,defDur){
+  const out=[],skipped={range:0,other:{}};
+  units.forEach((u,idx)=>{
+    const sl=u.slots||[];
+    const mk=slot=>({u,idx,date:slot?slot.date:null,slot:slot||null,tech:null,dur:slot&&slot.end-slot.start>=600?slot.end-slot.start:defDur});
+    if(!sl.length){out.push(mk(null));return}
+    const inRange=sl.filter(s=>dates.includes(s.date));
+    if(!inRange.length){skipped.range++;return}
+    inRange.forEach(s=>{const v=mk(s);
+      if(s.tech&&techs.length){
+        if(!techs.some(t=>TW.nameMatch(t,s.tech))){skipped.other[s.tech]=(skipped.other[s.tech]||0)+1;return}
+        v.tech=s.tech}
+      out.push(v)})});
+  return{visits:out,skipped}}
+
+// Plusieurs visites à la même adresse, le même jour et pour le même technicien = un seul arrêt (étages dans l'ordre).
+function groupStops(vs){
+  const m=new Map();
+  vs.forEach(v=>{const a=v.u,k=[a.adresse,a.cp,v.date||"*",v.tech?v.tech.toLowerCase():"*"].join("|");
+    if(!m.has(k))m.set(k,{key:k,adresse:a.adresse,cp:a.cp,ville:a.ville,pt:v.pt||null,date:v.date,tech:v.tech,visits:[],idx:v.idx});
+    const s=m.get(k);s.visits.push(v);s.idx=Math.min(s.idx,v.idx);if(!s.pt&&v.pt)s.pt=v.pt});
+  return[...m.values()].map(s=>{
+    s.visits.sort((a,b)=>etNum(a.u.etage)-etNum(b.u.etage)||(a.slot?a.slot.start:0)-(b.slot?b.slot.start:0));
+    s.svc=s.visits.reduce((t,v)=>t+v.dur,0);
+    s.quality=(s.visits.find(v=>v.u.quality!=="ok")||s.visits[0]).u.quality;
+    const sl=s.visits.filter(v=>v.slot);
+    if(sl.length)s.win={ws:Math.min(...sl.map(v=>v.slot.start)),we:Math.max(...sl.map(v=>v.slot.end)),md:s.date.slice(5)};
+    else{const c=s.visits.find(v=>v.u.cwin);s.win=c?c.u.cwin:null}
+    return s})}
+
+// ---- simulation d'une tournée : heures d'arrivée, attentes, retards, retour ----
+// res : {start, end (nœud ou null = fin au dernier arrêt), t0, dayEnd}   C : {t(i,j) secondes, d(i,j) mètres}
+function run(res,seq,C){
+  let t=res.t0,p=res.start,m=0,late=0,tr=0;const times=[];
+  for(const j of seq){const s=C.t(p,j.node),d=C.d(p,j.node);t+=s;tr+=s;m+=d;
+    const arr=t;if(j.ws!=null&&t<j.ws)t=j.ws;
+    const l=j.we!=null&&arr>j.we?arr-j.we:0;late+=l;
+    times.push({arr,start:t,dep:t+j.svc,late:l,leg:s,legM:d});t+=j.svc;p=j.node}
+  let backSec=0,backM=0;
+  if(res.end!=null&&seq.length){backSec=C.t(p,res.end);backM=C.d(p,res.end);t+=backSec;tr+=backSec;m+=backM}
+  const over=res.dayEnd!=null?Math.max(0,t-res.dayEnd):0;
+  return{times,end:t,late,over,travel:tr,meters:m,backSec,backM,cost:t+LATE_W*late+OVER_W*over}}
+
+const jobOf=(st,res)=>{const w=st.win&&(!st.win.md||st.win.md===res.date.slice(5))?st.win:null;return{st,node:st.node,svc:st.svc,ws:w?w.ws:null,we:w?w.we:null}};
+const perms=a=>a.length<2?[a]:a.flatMap((x,i)=>perms(a.slice(0,i).concat(a.slice(i+1))).map(p=>[x,...p]));
+function nn(res,jobs,C){const left=jobs.slice(),o=[];let p=res.start;
+  while(left.length){let b=0,bd=Infinity;left.forEach((j,i)=>{const d=C.t(p,j.node);if(d<bd){bd=d;b=i}});o.push(left.splice(b,1)[0]);p=o[o.length-1].node}return o}
+function byWindow(res,jobs,C){
+  const w=jobs.filter(j=>j.ws!=null||j.we!=null).sort((a,b)=>(a.ws!=null?a.ws:a.we-3600)-(b.ws!=null?b.ws:b.we-3600)),seq=w.slice();
+  jobs.filter(j=>!w.includes(j)).forEach(j=>{let bp=0,bc=Infinity;
+    for(let p=0;p<=seq.length;p++){const c=run(res,seq.slice(0,p).concat([j],seq.slice(p)),C).cost;if(c<bc){bc=c;bp=p}}seq.splice(bp,0,j)});
+  return seq}
+function improve(res,seq,C){
+  let best=seq.slice(),bc=run(res,best,C).cost,n=best.length,go=true,g=0;
+  while(go&&g++<80){go=false;
+    for(let i=0;i<n;i++)for(let k=0;k<n;k++){if(k===i)continue;
+      const c=best.slice(),x=c.splice(i,1)[0];c.splice(k,0,x);const v=run(res,c,C).cost;if(v<bc-1e-6){best=c;bc=v;go=true}}
+    for(let i=0;i<n-1;i++)for(let k=i+1;k<n;k++){
+      const c=best.slice(0,i).concat(best.slice(i,k+1).reverse(),best.slice(k+1));const v=run(res,c,C).cost;if(v<bc-1e-6){best=c;bc=v;go=true}}}
+  return best}
+// ordre optimal (exhaustif jusqu'à 7 arrêts, sinon plus proche voisin / fenêtres horaires puis amélioration locale)
+function solve(res,jobs,C){
+  if(jobs.length<2)return jobs.slice();
+  if(jobs.length<=7){let best=null,bc=Infinity;for(const p of perms(jobs)){const c=run(res,p,C).cost;if(c<bc){bc=c;best=p}}return best}
+  let best=null,bc=Infinity;
+  for(const s of [nn(res,jobs,C),byWindow(res,jobs,C)]){const c=improve(res,s,C),v=run(res,c,C).cost;if(v<bc){bc=v;best=c}}
+  return best}
+
+// ---- répartition des arrêts entre les ressources (technicien × jour), par insertion la moins coûteuse ----
+// Un arrêt verrouillé (date ou technicien prévus) ne va que dans les ressources compatibles ; les autres équilibrent la charge.
+function assign(rs,stops,C){
+  const seqs=rs.map(()=>[]),unassigned=[],left=[];
+  const allowed=st=>rs.map((r,i)=>(!st.date||st.date===r.date)&&(!st.tech||TW.nameMatch(r.tech,st.tech))?i:-1).filter(i=>i>=0);
+  stops.forEach(st=>{const al=allowed(st);if(al.length)left.push({st,al});else unassigned.push(st)});
+  const bestIns=(st,al)=>{let best=null;
+    for(const ri of al){const r=rs[ri],seq=seqs[ri],base=run(r,seq,C).cost;
+      for(let p=0;p<=seq.length;p++){const x=run(r,seq.slice(0,p).concat([jobOf(st,r)],seq.slice(p)),C);
+        const score=x.cost-base+BAL*(x.end-r.t0)+DAYPEN*r.dayIdx;if(!best||score<best.score)best={ri,p,score}}}
+    return best};
+  const put=(x,b)=>seqs[b.ri].splice(b.p,0,jobOf(x.st,rs[b.ri]));
+  left.filter(x=>x.al.length===1).forEach(x=>put(x,bestIns(x.st,x.al)));
+  const free=left.filter(x=>x.al.length>1);
+  while(free.length){let bi=0,bb=null;free.forEach((x,i)=>{const b=bestIns(x.st,x.al);if(!bb||b.score<bb.score){bb=b;bi=i}});put(free.splice(bi,1)[0],bb)}
+  return{seqs:seqs.map((s,i)=>solve(rs[i],s,C)),unassigned}}
+
+// comparaison : ordre des lignes de l'export, pour les mêmes arrêts
+const baseline=(res,seq,C)=>run(res,seq.slice().sort((a,b)=>a.st.idx-b.st.idx),C);
+
+return{visits,groupStops,run,solve,assign,baseline,jobOf,etNum}})();
+
+// ---------- sorties : texte à partager, agenda (.ics), bilan cumulé (fonctions pures) ----------
+const EXP=(()=>{
+const p2=n=>String(n).padStart(2,"0");
+const hm=s=>{s=Math.round(s/60);return p2(Math.floor(s/60)%24)+":"+p2(s%60)};
+const dfr=d=>{const [y,m,j]=d.split("-");return`${j}/${m}/${y}`};
+const wd=d=>["dim.","lun.","mar.","mer.","jeu.","ven.","sam."][new Date(d+"T12:00:00").getDay()];
+const label=(a)=>`${a.adresse}, ${a.cp} ${a.ville}`;
+const unitTxt=v=>[v.twimm&&"BI "+v.twimm,v.type,(v.etage||v.porte)&&`ét. ${v.etage||"?"} porte ${v.porte||"?"}`].filter(Boolean).join(" · ");
+
+function shareText(r){
+  const L=[`Tournée ${r.tech?r.tech+" · ":""}${wd(r.date)} ${dfr(r.date)} · départ ${hm(r.t0)}`];
+  r.stops.forEach((s,i)=>{L.push("",`${i+1}. ${hm(s.arr)} ${label(s)}`);
+    s.visits.forEach(v=>L.push("   "+unitTxt(v)));if(s.consigne)L.push("   Consigne : "+s.consigne)});
+  L.push("",`Retour estimé ${hm(r.end)}`);return L.join("\n")}
+
+const esc=t=>String(t||"").replace(/\\/g,"\\\\").replace(/;/g,"\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
+const fold=l=>{if(l.length<=74)return l;const o=[l.slice(0,74)];for(let i=74;i<l.length;i+=73)o.push(" "+l.slice(i,i+73));return o.join("\r\n")};
+const stamp=(d,s)=>d.replace(/-/g,"")+"T"+p2(Math.floor(s/3600)%24)+p2(Math.floor(s/60)%60)+"00";
+// agenda de la journée : un événement par arrêt (heures locales, sans fuseau)
+function ics(plan,now){
+  const z=(now||new Date()).toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
+  const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//tournees-bhp//FR","CALSCALE:GREGORIAN"];
+  plan.resources.forEach((r,ri)=>r.stops.forEach((s,i)=>{
+    L.push("BEGIN:VEVENT",`UID:${plan.id}-${ri}-${i}@tournees-bhp`,"DTSTAMP:"+z,
+      "DTSTART:"+stamp(r.date,s.start),"DTEND:"+stamp(r.date,Math.max(s.dep,s.start+900)),
+      "SUMMARY:"+esc(`${i+1}. ${s.adresse}`+(r.tech?` (${r.tech})`:"")),"LOCATION:"+esc(label(s)),
+      "DESCRIPTION:"+esc(s.visits.map(unitTxt).join("\n")+(s.consigne?"\nConsigne : "+s.consigne:"")),
+      ...(s.pt?[`GEO:${s.pt.lat.toFixed(6)};${s.pt.lng.toFixed(6)}`]:[]),"END:VEVENT")}));
+  L.push("END:VCALENDAR");return L.map(fold).join("\r\n")+"\r\n"}
+
+// ---- bilan cumulé (stocké localement, sans adresse) ----
+function addStat(list,e){const i=list.findIndex(x=>x.id===e.id);if(i>=0)list[i]=e;else list.push(e);return list.slice(-500)}
+function byMonth(list){const m={};
+  list.forEach(e=>{const k=e.date.slice(0,7),o=m[k]||(m[k]={month:k,n:0,stops:0,mBase:0,mOpt:0,sBase:0,sOpt:0});
+    o.n+=e.n||1;o.stops+=e.stops;o.mBase+=e.mBase;o.mOpt+=e.mOpt;o.sBase+=e.sBase;o.sOpt+=e.sOpt});
+  return Object.values(m).sort((a,b)=>a.month<b.month?-1:1)}
+const sum=a=>a.reduce((t,o)=>({n:t.n+o.n,stops:t.stops+o.stops,mBase:t.mBase+o.mBase,mOpt:t.mOpt+o.mOpt,sBase:t.sBase+o.sBase,sOpt:t.sOpt+o.sOpt}),{n:0,stops:0,mBase:0,mOpt:0,sBase:0,sOpt:0});
+// coûts : carburant = km × L/100 × prix ; main-d'œuvre = heures × coût horaire (chacun seulement si renseigné)
+function cost(t,o){const km=(t.mBase-t.mOpt)/1000,h=(t.sBase-t.sOpt)/3600;
+  return{km,h,fuel:o&&o.l100>0&&o.price>0?km*o.l100/100*o.price:null,labour:o&&o.hourly>0?h*o.hourly:null}}
+const csv=list=>"\uFEFF"+["mois;tournees;arrets;km_ordre_export;km_optimise;km_economises;minutes_economisees"].concat(
+  byMonth(list).map(o=>[o.month,o.n,o.stops,(o.mBase/1000).toFixed(1),(o.mOpt/1000).toFixed(1),((o.mBase-o.mOpt)/1000).toFixed(1),Math.round((o.sBase-o.sOpt)/60)].join(";"))).join("\r\n");
+return{hm,dfr,wd,label,unitTxt,shareText,ics,addStat,byMonth,sum,cost,csv}})();
+
+// ---------- saisie : techniciens, options de la journée, interventions ----------
+const OPTS=["mdays","mwk","mstart","mend","mdur","mfrom","mto","mdepot"];
+function loadOpts(){const o=ls.g("opts")||{};OPTS.forEach(k=>{if(o[k]==null)return;if($(k).type==="checkbox")$(k).checked=!!o[k];else $(k).value=o[k]})}
+function saveOpts(){const o={};OPTS.forEach(k=>o[k]=$(k).type==="checkbox"?$(k).checked:$(k).value);ls.s("opts",o)}
+OPTS.forEach(k=>$(k).onchange=saveOpts);loadOpts();
+$("mdate").value=iso(new Date());
+
+// techniciens : prénom + domicile, mémorisés localement (jamais sur la fiche)
+function trowHtml(t){return`<div class="trow"><input class="tn" list="names" placeholder="Prénom" value="${esc(t.n)}" autocomplete="off"><input class="th" placeholder="Domicile : n° rue, code postal, ville" value="${esc(t.h)}" autocomplete="off"><button class="tx" title="Retirer" aria-label="Retirer ce technicien">✕</button></div>`}
+function readRows(){return[...document.querySelectorAll("#trows .trow")].map(r=>({n:normName(r.querySelector(".tn").value),h:r.querySelector(".th").value.trim()}))}
+function saveRows(){ls.s("trows",readRows().filter(t=>t.n||t.h))}
+function drawRows(rows){
+  $("trows").innerHTML=rows.map(trowHtml).join("");
+  $("names").innerHTML=readRows().map(t=>t.n).filter(Boolean).map(n=>`<option value="${esc(n)}">`).join("");
+  document.querySelectorAll("#trows .trow").forEach(r=>{
+    r.querySelector(".tn").onchange=r.querySelector(".th").onchange=saveRows;
+    r.querySelector(".tx").onclick=()=>{const rs=readRows();rs.splice([...$("trows").children].indexOf(r),1);drawRows(rs.length?rs:[{n:"",h:""}]);saveRows()}})}
+$("tadd").onclick=()=>drawRows(readRows().concat([{n:"",h:""}]));
+drawRows((ls.g("trows")||[]).length?ls.g("trows"):[{n:"",h:""}]);
+
+// dates de la période : à partir du premier jour, N jours (ouvrés si demandé)
+function horizon(){
+  const out=[],n=Math.max(1,Math.min(10,+$("mdays").value||1));let d=new Date($("mdate").value+"T12:00:00");if(isNaN(d))d=new Date();
+  for(let g=0;out.length<n&&g<60;g++){const w=d.getDay();if(!$("mwk").checked||(w>0&&w<6))out.push(iso(d));d=new Date(d.getTime()+86400000)}
+  return out}
+
+// ---- liste des interventions lues dans l'export ----
+function slotTxt(u){const s=(u.slots||[])[0];if(!s)return"";return`prévu le ${EXP.dfr(s.date)} ${EXP.hm(s.start)}–${EXP.hm(s.end)}${s.tech?" · "+s.tech:""}${u.slots.length>1?` (+${u.slots.length-1})`:""}`}
 function mrender(){
-  $("mpick").classList.toggle("hide",!MP.all.length);
-  $("mlist").innerHTML=MP.all.map((a,i)=>`<label class="irow ${a.quality==="site"?"check":"ready"}" style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--tx)">
-    <input type="checkbox" data-i="${i}" ${a.sel?"checked":""}><span class="itxt"><b>${mlabel(a)}</b>${a.etage||a.porte?` · ét. ${esc(a.etage||"?")} · porte ${esc(a.porte||"?")}`:""}
-    <small>${esc([a.twimm&&"BI "+a.twimm,a.type,a.statut].filter(Boolean).join(" · "))}${a.quality==="site"?' · <span class="warn">adresse du site (position approximative)</span>':""}${a.quality==="multi"?' · <span class="warn">plusieurs adresses dans l’objet : première adresse seulement</span>':""}</small></span></label>`).join("");
-  $("mlist").querySelectorAll("input").forEach(c=>c.onchange=()=>{MP.all[+c.dataset.i].sel=c.checked})}
-$("mall").onclick=()=>{MP.all.forEach(a=>a.sel=true);mrender()};
-$("mnone").onclick=()=>{MP.all.forEach(a=>a.sel=false);mrender()};
+  $("mpick").classList.toggle("hide",!ST.units.length);
+  $("mlist").innerHTML=ST.units.map((a,i)=>`<label class="irow ${a.quality==="ok"?"ready":"check"}" style="display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--tx)">
+    <input type="checkbox" data-i="${i}" ${a.sel?"checked":""}><span class="itxt"><b>${esc(a.adresse)}, ${esc(a.cp)} ${esc(a.ville)}</b>${a.etage||a.porte?` · ét. ${esc(a.etage||"?")} · porte ${esc(a.porte||"?")}`:""}
+    <small>${esc([a.twimm&&"BI "+a.twimm,a.type,a.statut].filter(Boolean).join(" · "))}</small>
+    ${slotTxt(a)?`<small>${esc(slotTxt(a))}</small>`:""}
+    ${a.quality==="site"?'<small class="warn">adresse du site (position approximative)</small>':""}${a.quality==="multi"?'<small class="warn">plusieurs adresses dans l’objet : première adresse seulement</small>':""}</span></label>`).join("");
+  $("mlist").querySelectorAll("input").forEach(c=>c.onchange=()=>{ST.units[+c.dataset.i].sel=c.checked})}
+$("mall").onclick=()=>{ST.units.forEach(a=>a.sel=true);mrender()};
+$("mnone").onclick=()=>{ST.units.forEach(a=>a.sel=false);mrender()};
 
 $("mcsv").onchange=async ev=>{
-  const f=ev.target.files[0];if(!f)return;mmsg("Lecture du fichier…");
+  const f=ev.target.files[0];if(!f)return;msg("mmsg","Lecture du fichier…");
   try{
     const rows=TW.parseCSV(TW.decode(await f.arrayBuffer()));
     if(!rows.length||!("ntwimm" in rows[0])||!("objet" in rows[0]))throw new Error("ce fichier ne ressemble pas à un export twimm (colonnes « N° twimm » et « Objet » introuvables).");
-    const seen=new Set();let skipped=0;MP.all=[];
-    rows.forEach(r=>{if(!(r.ntwimm||"").trim())return;const a=MAPC.fromRow(r);if(!a){skipped++;return}
-      if(seen.has(a.twimm))return;seen.add(a.twimm);a.sel=!/annul/i.test(a.statut);MP.all.push(a)});
-    mmsg(`${f.name} : ${MP.all.length} intervention(s) avec adresse${skipped?`, ${skipped} sans adresse exploitable (ignorée(s))`:""}. Décoche celles qui ne sont pas pour cette tournée.`,"ok");mrender()}
-  catch(e){mmsg("Erreur : "+e.message,"err")}};
+    const seen=new Set();let skipped=0;ST.units=[];
+    rows.forEach((r,i)=>{if(!(r.ntwimm||"").trim())return;const a=MAPC.fromRow(r);if(!a){skipped++;return}
+      if(seen.has(a.twimm))return;seen.add(a.twimm);a.idx=i;a.sel=!/annul/i.test(a.statut);ST.units.push(a)});
+    // période : si rien n'est prévu aujourd'hui, on se place sur le jour le plus chargé de l'export
+    const cnt={};ST.units.forEach(u=>(u.slots||[]).forEach(s=>cnt[s.date]=(cnt[s.date]||0)+1));
+    const today=iso(new Date());let note="";
+    if(!cnt[today]&&Object.keys(cnt).length){const best=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]||(a<b?-1:1))[0];$("mdate").value=best;note=` Premier jour réglé sur le ${EXP.dfr(best)} (le plus chargé de l’export).`}
+    msg("mmsg",`${f.name} : ${ST.units.length} intervention(s) avec adresse${skipped?`, ${skipped} sans adresse exploitable (ignorée(s))`:""}.${note}`,"ok");mrender()}
+  catch(e){msg("mmsg","Erreur : "+e.message,"err")}};
 
-// ---- service d'adresses de l'État, avec mémoire locale pour ne pas redemander la même adresse ----
+// ---------- calcul : localisation des adresses, trajets, répartition ----------
 const geoCache=ls.g("geo")||{};
+(function(){const lim=Date.now()-30*864e5;let ch=false;for(const k in geoCache)if(!geoCache[k].t||geoCache[k].t<lim){delete geoCache[k];ch=true}if(ch)ls.s("geo",geoCache)})();
+const FIX=ls.g("fix")||{};
+const fixKey=u=>[u.adresse,u.cp,u.ville].join("|").toUpperCase();
+// correction d'adresse mémorisée par l'utilisateur : réappliquée à chaque import
+function applyFix(u){u.fk=u.fk||fixKey(u);const t=FIX[u.fk];if(!t||u.fixed===t)return;
+  const f=MAPC.fromPaste(t)[0];if(f){u.adresse=f.adresse;u.cp=f.cp;u.ville=f.ville;u.full=f.full;u.quality="ok";u.fixed=t}}
+
 async function geocode(a){
   const k=MAPC.queryOf(a).toUpperCase();if(geoCache[k])return geoCache[k];
   const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),10000);
   try{const r=await fetch(MAPC.geoUrl(a),{signal:ctl.signal});if(!r.ok)throw new Error("HTTP "+r.status);
-    const p=MAPC.geoPick(await r.json());if(p){geoCache[k]=p;ls.s("geo",geoCache)}return p}
+    const p=MAPC.geoPick(await r.json());if(p){p.t=Date.now();geoCache[k]=p;ls.s("geo",geoCache)}return p}
   finally{clearTimeout(t)}}
 async function geocodeAll(list,progress){
   let done=0,idx=0,failed=false;
   const worker=async()=>{while(idx<list.length){const a=list[idx++];
-    try{a.pt=await geocode(a)}catch(e){a.pt=null;a.err=true;failed=true}
-    progress(++done,list.length)}};
+    try{a.pt=await geocode(a)}catch(e){a.pt=null;failed=true}progress(++done,list.length)}};
   await Promise.all([worker(),worker(),worker(),worker()]);return failed}
 
-const km=x=>x.toFixed(x<10?1:0).replace(".",",")+" km";
-function mdraw(home,placed,order,lost){
-  const tech=normName($("mtech").value);
-  $("mfiche").classList.remove("hide");
-  $("mtitle").textContent=`Tournée${tech?" de "+tech:""} · ${placed.length} arrêt(s)`;
-  const pts=placed.map(a=>a.pt);let prev=home,tot=0;
-  const legs=order.map(i=>{const d=MAPC.roadKm(MAPC.hav(prev,pts[i]));prev=pts[i];tot+=d;return d});
-  const back=MAPC.roadKm(MAPC.hav(prev,home));tot+=back;
-  $("msum").innerHTML=`Environ ${km(tot)} par la route, aller-retour depuis le domicile (estimation).`;
-  $("mtour").innerHTML="";
-  MAPC.gTour(home,pts,order).forEach((u,i,all)=>{const a=document.createElement("a");a.href=u;a.target="_blank";a.rel="noopener";a.className="btnlink";
-    a.textContent=all.length>1?`Google Maps · partie ${i+1}/${all.length}`:"Itinéraire complet (Google Maps)";$("mtour").appendChild(a)});
-  $("mstops").innerHTML=order.map((i,n)=>{const a=placed[i];
-    const warn=[];if(a.quality==="site")warn.push("adresse du site : position approximative");
-    if(a.quality==="multi")warn.push("l’objet cite plusieurs adresses : première adresse seulement, à compléter");
-    if(a.pt.score<0.5)warn.push("adresse mal reconnue : à vérifier sur place");
-    return `<div class="card stop"><div class="ihead"><span class="num">${n+1}</span><div class="itxt"><b>${mlabel(a)}</b>
-      ${a.etage||a.porte?`<div>Étage ${esc(a.etage||"?")} · Porte ${esc(a.porte||"?")}</div>`:""}
-      <small>${esc([a.twimm&&"BI "+a.twimm,a.type,a.site,a.client].filter(Boolean).join(" · "))}</small>
-      ${a.consigne?`<small>Consigne : ${esc(a.consigne)}</small>`:""}
-      ${warn.map(w=>`<small class="warn">${esc(w)}</small>`).join("")}
-      <small>${n===0?"Depuis le domicile":"Depuis l’arrêt précédent"} : environ ${km(legs[n])}</small></div></div>
-      <div class="tools noprint"><a class="btnlink" target="_blank" rel="noopener" href="${MAPC.gStop(a.pt)}">Y aller · Google Maps</a><a class="btnlink" target="_blank" rel="noopener" href="${MAPC.wazeStop(a.pt)}">Waze</a></div></div>`}).join("")+
-    (lost.length?`<div class="card"><b>Adresses non placées (à ajouter à la main)</b>${lost.map(a=>`<div class="rs" style="margin-left:0">${mlabel(a)}${a.twimm?" · BI "+esc(a.twimm):""}</div>`).join("")}</div>`:"");
-  // carte
-  if(typeof L==="undefined"){$("mmap").innerHTML='<div class="msg">Carte indisponible (bibliothèque non chargée).</div>';return}
-  if(MP.map){MP.map.remove();MP.map=null}
-  const map=MP.map=L.map("mmap",{scrollWheelZoom:false});
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© les contributeurs d’OpenStreetMap"}).addTo(map);
-  const ll=p=>[p.lat,p.lng];
-  L.polyline([ll(home)].concat(order.map(i=>ll(pts[i])),[ll(home)]),{color:"#d41c1c",weight:3,opacity:.7,dashArray:"6 6"}).addTo(map);
-  L.marker(ll(home),{icon:L.divIcon({className:"mk home",html:"<span>D</span>",iconSize:[28,28]}),title:"Domicile"}).addTo(map);
-  order.forEach((i,n)=>L.marker(ll(pts[i]),{icon:L.divIcon({className:"mk",html:`<span>${n+1}</span>`,iconSize:[28,28]}),title:placed[i].adresse}).addTo(map));
-  map.fitBounds(L.latLngBounds([ll(home)].concat(pts.map(ll))),{padding:[24,24]})}
+let busy=false;
+async function compute(){
+  if(busy)return;busy=true;$("mgo").disabled=true;
+  try{await computeInner()}catch(e){msg("mmsg","Erreur : "+e.message,"err")}
+  finally{busy=false;$("mgo").disabled=false}}
+$("mgo").onclick=compute;
 
-$("mgo").onclick=async()=>{
-  const h=$("mhome").value.trim(),tech=normName($("mtech").value);
-  const list=MP.all.filter(a=>a.sel).concat(MAPC.fromPaste($("mpaste").value));
-  if(h.length<6){mmsg("Indique le domicile du technicien (départ et retour).","err");return}
-  if(!list.length){mmsg("Aucune adresse : importe l’export twimm ou colle des adresses.","err");return}
-  if(tech){ls.s(homeKey(),h);ls.s("tech",tech);if(!techs.includes(tech)){techs.push(tech);ls.s("techs",techs)}}
-  $("mgo").disabled=true;
-  try{
-    const homeA=MAPC.fromPaste(h)[0];
-    mmsg("Localisation du domicile…");
-    let hp=null;try{hp=await geocode(homeA)}catch(e){}
-    if(!hp){mmsg("Domicile introuvable : vérifie l’adresse (numéro, rue, code postal, ville) et la connexion.","err");return}
-    const failed=await geocodeAll(list,(d,n)=>mmsg(`Localisation des adresses ${d}/${n}…`));
-    const placed=list.filter(a=>a.pt),lost=list.filter(a=>!a.pt);
-    if(!placed.length){mmsg(failed?"Le service d’adresses ne répond pas : vérifie la connexion et réessaie.":"Aucune adresse reconnue.","err");return}
-    mdraw(hp,placed,MAPC.plan(hp,placed.map(a=>a.pt)),lost);
-    mmsg(`${placed.length} adresse(s) placée(s)${lost.length?`, ${lost.length} non reconnue(s)`:""}${failed?" (certaines n’ont pas pu être interrogées : réessaie)":""}.`,lost.length||failed?"":"ok")}
-  catch(e){mmsg("Erreur : "+e.message,"err")}
-  finally{$("mgo").disabled=false}};
-$("mprint").onclick=()=>window.print();
+async function computeInner(){
+  const rows=readRows().filter(t=>t.n||t.h);
+  if(!rows.length||rows.some(t=>t.h.length<6))return msg("mmsg","Indique le domicile de chaque technicien (départ et retour).","err");
+  if(rows.length>1&&rows.some(t=>!t.n))return msg("mmsg","Indique le prénom de chaque technicien.","err");
+  saveRows();saveOpts();
+  const dates=horizon(),defDur=Math.max(5,+$("mdur").value||30)*60;
+  const t0=toSec($("mstart").value),dayEnd=toSec($("mend").value);
+  if(t0==null||dayEnd==null||dayEnd<=t0)return msg("mmsg","Vérifie l’heure de départ et la fin de journée.","err");
+  const from=$("mfrom").value,to=$("mto").value,needDepot=from==="depot"||to==="depot",depotTxt=$("mdepot").value.trim();
+  if(needDepot&&depotTxt.length<6)return msg("mmsg","Indique l’adresse commune (dépôt), ou choisis le domicile.","err");
+  const units=ST.units.filter(u=>u.sel).concat(MAPC.fromPaste($("mpaste").value).map((u,i)=>Object.assign(u,{idx:100000+i})));
+  if(!units.length)return msg("mmsg","Aucune adresse : importe l’export twimm ou colle des adresses.","err");
+  units.forEach(applyFix);
+
+  const {visits,skipped}=SCH.visits(units,dates,rows.some(t=>!t.n)?[]:rows.map(t=>t.n),defDur);
+  const others=Object.keys(skipped.other);
+  if(!visits.length)return msg("mmsg",`Aucune intervention sur la période choisie (${skipped.range} prévue(s) à d’autres dates${others.length?`, d’autres techniciens : ${others.join(", ")}`:""}). Change le premier jour ou les techniciens.`,"err");
+
+  // localisation (une requête par adresse distincte ; mémoire locale)
+  const homesA=rows.map(t=>MAPC.fromPaste(t.h)[0]),depotA=needDepot?MAPC.fromPaste(depotTxt)[0]:null;
+  const used=units.filter(u=>visits.some(v=>v.u===u)),uniq=new Map();
+  [...homesA,depotA,...used].filter(Boolean).forEach(a=>{const k=MAPC.queryOf(a).toUpperCase();if(!uniq.has(k))uniq.set(k,a)});
+  const failed=await geocodeAll([...uniq.values()],(d,n)=>msg("mmsg",`Localisation des adresses ${d}/${n}…`));
+  const ptOf=a=>(uniq.get(MAPC.queryOf(a).toUpperCase())||{}).pt||null;
+  used.forEach(u=>u.pt=ptOf(u));
+  const hp=homesA.map(ptOf),dp=depotA?ptOf(depotA):null;
+  const badHome=hp.findIndex(p=>!p);
+  if(badHome>=0)return msg("mmsg",`Domicile introuvable${rows[badHome].n?" pour "+rows[badHome].n:""} : vérifie l’adresse (numéro, rue, code postal, ville) et la connexion.`,"err");
+  if(needDepot&&!dp)return msg("mmsg","Adresse commune introuvable : vérifie-la.","err");
+  const placedV=visits.filter(v=>v.u.pt),lostV=visits.filter(v=>!v.u.pt);
+  if(!placedV.length)return msg("mmsg",failed?"Le service d’adresses ne répond pas : vérifie la connexion et réessaie.":"Aucune adresse reconnue.","err");
+  placedV.forEach(v=>v.pt=v.u.pt);
+  const stops=SCH.groupStops(placedV);
+
+  // points : domiciles, dépôt, arrêts ; temps et distances par la route (repli : estimation)
+  const pts=hp.slice(),depotNode=dp?pts.push(dp)-1:-1;stops.forEach(s=>{s.node=pts.push(s.pt)-1});
+  msg("mmsg","Calcul des trajets…");
+  let json=null;
+  if(pts.length<=90){try{const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),15000);
+    const r=await fetch(MAPC.osrmUrl(pts),{signal:ctl.signal});clearTimeout(tm);
+    if(r.ok){const j=await r.json();if(j&&j.code==="Ok")json=j}}catch(e){}}
+  const C=MAPC.matrix(pts,json);
+
+  // répartition et ordre de passage
+  const rs=[];dates.forEach((d,di)=>rows.forEach((t,ti)=>rs.push({id:ti+"|"+d,tech:t.n,date:d,dayIdx:di,ti,t0,dayEnd,
+    start:from==="depot"?depotNode:ti,end:to==="home"?ti:to==="depot"?depotNode:null})));
+  const A=SCH.assign(rs,stops,C);
+
+  const plan={id:"p"+Date.now().toString(36),at:new Date().toISOString(),dates,exact:C.exact,resources:[],unplaced:[],excluded:skipped};
+  const side=v=>({twimm:v.u.twimm,adresse:v.u.adresse,cp:v.u.cp,ville:v.u.ville});
+  lostV.forEach(v=>plan.unplaced.push({...side(v),why:"adresse non reconnue"}));
+  A.unassigned.forEach(s=>s.visits.forEach(v=>plan.unplaced.push({...side(v),why:"technicien ou jour prévu hors de cette tournée"})));
+  const tot={n:0,stops:0,mBase:0,mOpt:0,sBase:0,sOpt:0};
+  rs.forEach((r,i)=>{
+    const seq=A.seqs[i];if(!seq.length&&(dates.length>1||rows.length>1))return;
+    const run=SCH.run(r,seq,C),base=SCH.baseline(r,seq,C);
+    const lead=run.times.length?Math.max(0,run.times[0].start-run.times[0].arr):0;   // attente avant le premier créneau : on peut partir plus tard
+    const R={lead:lead>=600?lead:0,tech:r.tech,date:r.date,t0:r.t0,end:run.end,meters:run.meters,travel:run.travel,late:run.late,over:run.over,dayEnd:r.dayEnd,
+      base:{meters:base.meters,travel:base.travel,late:base.late},startPt:pts[r.start],endPt:r.end==null?null:pts[r.end],stops:[]};
+    seq.forEach((j,k)=>{const s=j.st,tm=run.times[k],warn=[];
+      if(s.quality==="site")warn.push("adresse du site : position approximative");
+      if(s.quality==="multi")warn.push("l’objet cite plusieurs adresses : première adresse seulement, à compléter");
+      if(s.pt.score<0.5)warn.push("adresse mal reconnue : à vérifier sur place");
+      if(tm.late>0)warn.push(`arrivée ${fmtMin(tm.late)} après la fin du créneau`);
+      else if(j.ws!=null&&tm.start>tm.arr+300)warn.push(`attente de ${fmtMin(tm.start-tm.arr)} avant le créneau`);
+      R.stops.push({key:s.key,adresse:s.adresse,cp:s.cp,ville:s.ville,pt:{lat:s.pt.lat,lng:s.pt.lng,score:s.pt.score},
+        arr:tm.arr,start:tm.start,dep:tm.dep,legSec:tm.leg,legM:tm.legM,ws:j.ws,we:j.we,warn,
+        consigne:(s.visits.find(v=>v.u.consigne)||{u:{}}).u.consigne||"",
+        visits:s.visits.map(v=>({twimm:v.u.twimm,type:v.u.type,site:v.u.site,client:v.u.client,etage:v.u.etage,porte:v.u.porte,
+          slotStart:v.slot?v.slot.start:null,slotEnd:v.slot?v.slot.end:null}))})});
+    plan.resources.push(R);
+    if(seq.length){tot.n++;tot.stops+=seq.length;tot.mBase+=base.meters;tot.mOpt+=run.meters;tot.sBase+=base.travel;tot.sOpt+=run.travel}});
+  ls.s("plan",plan);ls.s("units",ST.units);   // la liste importée est gardée 48 h avec la tournée : on peut recalculer après un rechargement
+  if(tot.stops)ls.s("stats",EXP.addStat(ls.g("stats")||[],{id:dates[0]+"|"+rows.map(t=>t.n).join(",")+"|"+dates.length,date:dates[0],n:tot.n,stops:tot.stops,mBase:tot.mBase,mOpt:tot.mOpt,sBase:tot.sBase,sOpt:tot.sOpt}));
+  ST.fixList=used.filter(u=>!u.pt||u.pt.score<0.5||u.quality!=="ok");
+  renderPlan(plan);
+  msg("mmsg",`${tot.stops} arrêt(s) répartis sur ${tot.n} tournée(s)${plan.unplaced.length?`, ${plan.unplaced.length} non placé(e)s`:""}${failed?" (certaines adresses n’ont pas pu être interrogées : réessaie)":""}.`,plan.unplaced.length||failed?"":"ok");
+  $("mres").scrollIntoView({behavior:"smooth",block:"start"})}
+
+// ---------- affichage : bilan, adresses à vérifier, fiches et cartes ----------
+const COST=()=>ls.g("cost")||{};
+function bilanCard(plan){
+  const rs=plan.resources.filter(r=>r.stops.length);
+  const t=rs.reduce((a,r)=>({n:a.n+1,stops:a.stops+r.stops.length,mBase:a.mBase+r.base.meters,mOpt:a.mOpt+r.meters,sBase:a.sBase+r.base.travel,sOpt:a.sOpt+r.travel,lBase:a.lBase+r.base.late,lOpt:a.lOpt+r.late}),{n:0,stops:0,mBase:0,mOpt:0,sBase:0,sOpt:0,lBase:0,lOpt:0});
+  const L=[`<b>${t.n} tournée(s) · ${t.stops} arrêt(s)</b>`];
+  if(t.stops){
+    const dm=t.mBase-t.mOpt,pc=t.mBase?Math.round(dm/t.mBase*100):0;
+    L.push(dm>=0?`Distance : ${fmtKm(t.mBase)} dans l’ordre de l’export → <b>${fmtKm(t.mOpt)}</b> calculé (${dm>0?"−"+fmtKm(dm)+", −"+pc+" %":"identique"}).`
+      :`Distance : ${fmtKm(t.mBase)} dans l’ordre de l’export → ${fmtKm(t.mOpt)} calculé (+${fmtKm(-dm)} pour respecter les créneaux et la fin de journée).`);
+    L.push(`Temps de route : ${fmtMin(t.sBase)} → <b>${fmtMin(t.sOpt)}</b>.`);
+    if(t.lBase>0||t.lOpt>0)L.push(`Retards sur créneaux : ${fmtMin(t.lBase)} → ${fmtMin(t.lOpt)}.`);
+    const c=EXP.cost(t,COST());if(c.fuel!=null&&c.km>0)L.push(`Carburant économisé : environ ${c.fuel.toFixed(2).replace(".",",")} €.`);
+  }
+  if(plan.exact<1)L.push(`<span class="warn">${plan.exact===0?"Service routier indisponible : trajets estimés (à vol d’oiseau, ajustés).":"Trajets en partie estimés."}</span>`);
+  const o=Object.keys(plan.excluded.other);
+  if(plan.excluded.range||o.length)L.push(`<small>Écartées : ${[plan.excluded.range?plan.excluded.range+" prévue(s) à d’autres dates":"",o.length?"prévues pour d’autres techniciens ("+o.map(n=>esc(n)+" ×"+plan.excluded.other[n]).join(", ")+")":""].filter(Boolean).join(" ; ")}.</small>`);
+  return`<div class="card">${L.map(x=>`<div class="det">${x}</div>`).join("")}</div>`}
+
+function fixCard(list){
+  if(!list||!list.length)return"";
+  const seen=new Set(),items=list.filter(u=>{if(seen.has(u.fk))return false;seen.add(u.fk);return true});
+  return`<div class="card"><b>Adresses à vérifier (${items.length})</b><div class="msg">Corrige le texte si besoin, puis recalcule : la correction est mémorisée pour les prochains imports.</div>
+   ${items.map(u=>`<div style="margin-top:8px"><small class="warn">${!u.pt?"adresse non reconnue":u.pt.score<0.5?"adresse mal reconnue":u.quality==="site"?"adresse du site (approximative)":"plusieurs adresses dans l’objet"}${u.twimm?" · BI "+esc(u.twimm):""}</small>
+    <input class="fixin" data-k="${esc(u.fk)}" value="${esc(MAPC.queryOf(u))}"></div>`).join("")}
+   <div class="tools"><button id="fixgo" class="pri">Corriger et recalculer</button></div></div>`}
+
+function stopHtml(R,s,i,ri){
+  const st=(ls.g("prog:"+ST.plan.id)||{})[ri+":"+i];
+  const slot=s.ws!=null||s.we!=null?` · créneau ${s.ws!=null?EXP.hm(s.ws):"…"}–${s.we!=null?EXP.hm(s.we):"…"}`:"";
+  return`<div class="card stop"><div class="ihead"><span class="num">${i+1}</span><div class="itxt">
+    <div><span class="time">${EXP.hm(s.arr)}</span>${s.start>s.arr+300?` <small>(début ${EXP.hm(s.start)})</small>`:""} ${st?`<span class="badge ${esc(st)}">${esc(st)}</span>`:""}</div>
+    <b>${esc(EXP.label(s))}</b>
+    ${s.visits.map(v=>`<div>${v.etage||v.porte?`Étage ${esc(v.etage||"?")} · Porte ${esc(v.porte||"?")}`:"Logement"}<small> ${esc([v.twimm&&"BI "+v.twimm,v.type].filter(Boolean).join(" · "))}${v.slotStart!=null?esc(` · créneau ${EXP.hm(v.slotStart)}–${EXP.hm(v.slotEnd)}`):""}</small></div>`).join("")}
+    <small>${esc([...new Set(s.visits.map(v=>v.site).filter(Boolean))].concat([...new Set(s.visits.map(v=>v.client).filter(Boolean))]).join(" · "))}${esc(slot)}</small>
+    ${s.consigne?`<small>Consigne : ${esc(s.consigne)}</small>`:""}${s.warn.map(w=>`<small class="warn">${esc(w)}</small>`).join("")}
+    <small>${i===0?"Depuis le départ":"Depuis l’arrêt précédent"} : ${fmtMin(s.legSec)} · ${fmtKm(s.legM)}</small></div></div>
+   <div class="tools noprint"><a class="btnlink" target="_blank" rel="noopener" href="${MAPC.gStop(s.pt)}">Y aller · Google Maps</a><a class="btnlink" target="_blank" rel="noopener" href="${MAPC.wazeStop(s.pt)}">Waze</a></div></div>`}
+
+function resHtml(R,ri){
+  const n=R.stops.length,wd=EXP.wd(R.date)+" "+EXP.dfr(R.date);
+  if(!n)return`<section class="card res"><h2>${esc(R.tech||"Tournée")} · ${wd}</h2><div class="msg">Aucune intervention.</div></section>`;
+  const tours=MAPC.gTour(R.startPt,R.stops.map(s=>s.pt),R.stops.map((_,i)=>i),R.endPt);
+  return`<section class="res" data-ri="${ri}"><div class="card"><h2>${esc(R.tech||"Tournée")} · ${wd}</h2>
+   <div class="det">${n} arrêt(s) · départ ${EXP.hm(R.t0)} · ${R.endPt||R.stops.length?"fin estimée "+EXP.hm(R.end):""} · ${fmtKm(R.meters)} · ${fmtMin(R.travel)} de route</div>
+   ${R.lead?`<div class="det">Départ conseillé : <b>${EXP.hm(R.t0+R.lead)}</b> (le premier créneau n’ouvre qu’à ${EXP.hm(R.stops[0].start)} ; partir plus tôt ne ferait qu’attendre).</div>`:""}
+   ${R.over>0?`<div class="det warn">Dépasse la fin de journée de ${fmtMin(R.over)} : réduis la liste ou ajoute un jour.</div>`:""}
+   <div id="map${ri}" style="height:300px;border-radius:10px;margin-top:8px"></div>
+   <div class="msg">Tracé à vol d’oiseau ; heures, temps et distances calculés par la route.</div>
+   <div class="tools noprint">${tours.map((u,i)=>`<a class="btnlink" target="_blank" rel="noopener" href="${u}">${tours.length>1?`Google Maps · partie ${i+1}/${tours.length}`:"Itinéraire complet (Google Maps)"}</a>`).join("")}</div>
+   <div class="tools noprint"><button class="pri" data-act="field" data-ri="${ri}">Mode terrain</button><button data-act="share" data-ri="${ri}">Partager</button><button data-act="ics" data-ri="${ri}">Agenda (.ics)</button><button data-act="print">Imprimer / PDF</button></div>
+   <div class="msg" id="rm${ri}"></div></div>
+   ${R.stops.map((s,i)=>stopHtml(R,s,i,ri)).join("")}</section>`}
+
+function renderPlan(plan){
+  ST.plan=plan;ST.maps.forEach(m=>{try{m.remove()}catch(e){}});ST.maps=[];
+  const box=$("mres");box.classList.remove("hide");
+  box.innerHTML=bilanCard(plan)+fixCard(ST.fixList)+plan.resources.map(resHtml).join("")+
+    (plan.unplaced.length?`<div class="card"><b>Non placées (${plan.unplaced.length})</b>${plan.unplaced.map(u=>`<div class="rs" style="margin-left:0">${esc(u.adresse)}, ${esc(u.cp)} ${esc(u.ville)}${u.twimm?" · BI "+esc(u.twimm):""} — ${esc(u.why)}</div>`).join("")}</div>`:"");
+  const fg=$("fixgo");if(fg)fg.onclick=()=>{document.querySelectorAll(".fixin").forEach(i=>{const v=i.value.trim();if(v)FIX[i.dataset.k]=v});ls.s("fix",FIX);compute()};
+  box.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>act(b.dataset.act,+b.dataset.ri));
+  plan.resources.forEach((R,ri)=>{if(R.stops.length)drawMap(R,ri)})}
+
+function drawMap(R,ri){
+  if(typeof L==="undefined"){$("map"+ri).innerHTML='<div class="msg">Carte indisponible.</div>';return}
+  const map=L.map("map"+ri,{scrollWheelZoom:false});ST.maps.push(map);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© les contributeurs d’OpenStreetMap"}).addTo(map);
+  const ll=p=>[p.lat,p.lng],line=[R.startPt].concat(R.stops.map(s=>s.pt),R.endPt?[R.endPt]:[]);
+  L.polyline(line.map(ll),{color:"#d41c1c",weight:3,opacity:.7,dashArray:"6 6"}).addTo(map);
+  L.marker(ll(R.startPt),{icon:L.divIcon({className:"mk home",html:"<span>D</span>",iconSize:[28,28]}),title:"Départ"}).addTo(map);
+  R.stops.forEach((s,i)=>L.marker(ll(s.pt),{icon:L.divIcon({className:"mk",html:`<span>${i+1}</span>`,iconSize:[28,28]}),title:s.adresse}).addTo(map));
+  map.fitBounds(L.latLngBounds(line.map(ll)),{padding:[24,24]})}
+
+function act(a,ri){
+  const R=ST.plan&&ST.plan.resources[ri];
+  if(a==="print")return window.print();
+  if(!R)return;
+  if(a==="field")return openField(ri,0);
+  if(a==="share")return shareOrCopy("Tournée "+(R.tech||"")+" "+EXP.dfr(R.date),EXP.shareText(R),"rm"+ri);
+  if(a==="ics")return download(`tournee_${R.date}${R.tech?"_"+R.tech.replace(/\W+/g,""):""}.ics`,EXP.ics({id:ST.plan.id,resources:[R]}),"text/calendar;charset=utf-8")}
+
+// ---------- mode terrain : un arrêt à la fois, avec l'avancement mémorisé ----------
+let FD={ri:0,i:0};
+const progKey=()=>"prog:"+ST.plan.id,prog=()=>ls.g(progKey())||{};
+const STATUS={fait:"Fait",absent:"Absent",impossible:"Impossible"};
+function openField(ri,i){FD={ri,i};let el=$("field");if(!el){el=document.createElement("div");el.id="field";document.body.appendChild(el)}drawField()}
+function closeField(){const el=$("field");if(el)el.remove();renderPlan(ST.plan)}
+function setStatus(v){const p=prog();p[FD.ri+":"+FD.i]=v;ls.s(progKey(),p);
+  const R=ST.plan.resources[FD.ri],n=R.stops.length;let k=FD.i+1;
+  while(k<n&&p[FD.ri+":"+k])k++;
+  if(k>=n){k=0;while(k<n&&p[FD.ri+":"+k])k++}   // revient sur un arrêt resté sans statut
+  FD.i=k;drawField()}
+function report(R,ri){const p=prog();
+  return[`Compte rendu ${R.tech?R.tech+" · ":""}${EXP.dfr(R.date)}`].concat(R.stops.map((s,i)=>`${i+1}. ${s.adresse}, ${s.cp} ${s.ville} : ${STATUS[p[ri+":"+i]]||"non traité"}${s.visits.some(v=>v.twimm)?" (BI "+s.visits.map(v=>v.twimm).filter(Boolean).join(", ")+")":""}`)).join("\n")}
+function drawField(){
+  const el=$("field");if(!el)return;
+  const R=ST.plan.resources[FD.ri],n=R.stops.length,p=prog(),cnt={fait:0,absent:0,impossible:0};
+  R.stops.forEach((_,i)=>{const v=p[FD.ri+":"+i];if(v)cnt[v]++});const done=cnt.fait+cnt.absent+cnt.impossible;
+  const bar=`<div class="bar"><i style="width:${Math.round(done/n*100)}%"></i></div>`;
+  if(FD.i>=n){
+    el.innerHTML=`<div class="tools"><button id="fx">✕ Fermer</button></div>${bar}<div class="big">Tournée terminée</div>
+     <div class="det">${cnt.fait} fait(s) · ${cnt.absent} absent(s) · ${cnt.impossible} impossible(s)</div>
+     <div class="tools"><button class="pri" id="fs">Partager le compte rendu</button><button id="fb">Revoir les arrêts</button></div><div class="msg" id="fm"></div>`;
+    $("fx").onclick=closeField;$("fb").onclick=()=>{FD.i=0;drawField()};
+    $("fs").onclick=()=>shareOrCopy("Compte rendu de tournée",report(R,FD.ri),"fm");return}
+  const s=R.stops[FD.i],st=p[FD.ri+":"+FD.i];
+  el.innerHTML=`<div class="tools"><button id="fx">✕ Fermer</button></div>${bar}
+   <small>${esc(R.tech||"Tournée")} · ${EXP.dfr(R.date)} · arrêt ${FD.i+1}/${n} · ${done} traité(s)</small>
+   <div class="big">${esc(EXP.label(s))}</div>
+   <div class="det"><span class="time">Arrivée prévue ${EXP.hm(s.arr)}</span>${st?` <span class="badge ${esc(st)}">${esc(STATUS[st])}</span>`:""}</div>
+   ${s.visits.map(v=>`<div class="big" style="font-size:17px">${v.etage||v.porte?`Étage ${esc(v.etage||"?")} · Porte ${esc(v.porte||"?")}`:"Logement"}</div><small>${esc([v.twimm&&"BI "+v.twimm,v.type,v.slotStart!=null&&`créneau ${EXP.hm(v.slotStart)}–${EXP.hm(v.slotEnd)}`].filter(Boolean).join(" · "))}</small>`).join("")}
+   ${s.consigne?`<div class="det">Consigne : ${esc(s.consigne)}</div>`:""}${s.warn.map(w=>`<div class="det warn">${esc(w)}</div>`).join("")}
+   <div class="tools"><a class="btnlink" target="_blank" rel="noopener" href="${MAPC.gStop(s.pt)}">Y aller · Google Maps</a><a class="btnlink" target="_blank" rel="noopener" href="${MAPC.wazeStop(s.pt)}">Waze</a></div>
+   <div class="tools"><button class="pri" id="fd">Fait</button><button id="fa">Absent</button><button id="fi">Impossible</button></div>
+   <div class="tools"><button id="fp" ${FD.i?"":"disabled"}>‹ Précédent</button><button id="fn">Suivant ›</button></div>`;
+  $("fx").onclick=closeField;$("fd").onclick=()=>setStatus("fait");$("fa").onclick=()=>setStatus("absent");$("fi").onclick=()=>setStatus("impossible");
+  $("fp").onclick=()=>{FD.i=Math.max(0,FD.i-1);drawField()};$("fn").onclick=()=>{FD.i++;drawField()}}
+
+// ---------- onglet Bilan : économies cumulées (mémorisées sur cet appareil, sans adresse) ----------
+function drawBilan(){
+  const st=ls.g("stats")||[],c=COST(),mo=EXP.byMonth(st),t=EXP.sum(mo);
+  $("cl").value=c.l100||"";$("cp").value=c.price||"";$("ch").value=c.hourly||"";
+  if(!st.length){$("bsum").textContent="Aucune tournée calculée pour l’instant.";$("bmonths").innerHTML="";return}
+  const k=EXP.cost(t,c),dm=t.mBase-t.mOpt;
+  $("bsum").innerHTML=`${t.n} tournée(s) · ${t.stops} arrêt(s)<br>Distance : ${fmtKm(t.mBase)} dans l’ordre de l’export → <b>${fmtKm(t.mOpt)}</b> calculé (${dm>=0?"−":"+"}${fmtKm(Math.abs(dm))}).<br>Temps de route économisé : <b>${fmtMin(Math.max(0,t.sBase-t.sOpt))}</b>.`+
+    (k.fuel!=null?`<br>Carburant : environ <b>${k.fuel.toFixed(2).replace(".",",")} €</b>.`:"")+(k.labour!=null?`<br>Temps de technicien : environ <b>${k.labour.toFixed(2).replace(".",",")} €</b>.`:"");
+  $("bmonths").innerHTML=`<table class="mo"><tr><th>Mois</th><th>Tournées</th><th>Arrêts</th><th>Km export</th><th>Km calculés</th></tr>${mo.map(o=>`<tr><td>${esc(o.month)}</td><td>${o.n}</td><td>${o.stops}</td><td>${(o.mBase/1000).toFixed(0)}</td><td>${(o.mOpt/1000).toFixed(0)}</td></tr>`).join("")}</table>`}
+["cl","cp","ch"].forEach(i=>$(i).onchange=()=>{ls.s("cost",{l100:+$("cl").value||0,price:+$("cp").value||0,hourly:+$("ch").value||0});drawBilan()});
+$("bcsv").onclick=()=>{const s=ls.g("stats")||[];if(!s.length)return;download("bilan_tournees.csv",EXP.csv(s),"text/csv;charset=utf-8")};
+
+// ---------- onglet Données : effacement, installation, hors ligne ----------
+$("dclear").onclick=async()=>{
+  if(!confirm("Effacer les domiciles, adresses mémorisées, tournées, corrections et le bilan de cet appareil ?"))return;
+  try{localStorage.clear()}catch(e){}
+  try{if(window.caches)for(const k of await caches.keys())await caches.delete(k)}catch(e){}
+  msg("dmsg","Données effacées.","ok");setTimeout(()=>location.reload(),600)};
+let installEv=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEv=e;$("dinstall").classList.remove("hide")});
+$("dinstall").onclick=async()=>{if(!installEv)return;installEv.prompt();try{await installEv.userChoice}catch(e){}installEv=null;$("dinstall").classList.add("hide")};
+if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol))navigator.serviceWorker.register("sw.js").catch(()=>{});
+
+// ---------- onglets et reprise de la dernière tournée ----------
+function tab(n){[1,2,3].forEach(i=>{$("p"+i).classList.toggle("hide",i!==n);$("t"+i).classList.toggle("on",i===n)});if(n===2)drawBilan()}
+[1,2,3].forEach(i=>$("t"+i).onclick=()=>tab(i));
+(function restore(){
+  const p=ls.g("plan");if(!p)return;
+  if(Date.now()-new Date(p.at).getTime()>48*3600*1000){ls.d("plan");ls.d("units");ls.d("prog:"+p.id);return}   // conservation : 48 h
+  $("mdate").value=p.dates[0];$("mdays").value=p.dates.length;
+  ST.units=ls.g("units")||[];ST.units.forEach(u=>{u.pt=null});mrender();
+  ST.fixList=[];renderPlan(p);
+  msg("mmsg","Dernière tournée (calculée le "+new Date(p.at).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"})+") : disponible même sans réseau.","")})();
 
 </script>
 </body>

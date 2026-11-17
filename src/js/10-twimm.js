@@ -52,4 +52,25 @@ function findEtagePorte(rest){
   else{const g=/\b(GAUCHE|DROITE)\b/.exec(rest);if(g)p=g[1]}
   return{etage:e,porte:p}}
 
-return{decode,parseCSV,findAddress,findEtagePorte}})();
+// ---- créneaux prévus, technicien prévu, consignes horaires ----
+const dt=s=>{const m=/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/.exec(s||"");return m?{date:`${m[3]}-${m[2]}-${m[1]}`,sec:(+m[4])*3600+(+m[5])*60}:null};
+const lines=x=>(x||"").split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+// « Début/Fin passages prévus » et « Passages prévus » (techniciens) sont alignés ligne à ligne
+function slots(r){
+  const d=lines(r.debutpassagesprevus),f=lines(r.finpassagesprevus),t=lines(r.passagesprevus);
+  return d.map((s,i)=>{const a=dt(s),b=dt(f[i]);if(!a)return null;
+    return{date:a.date,start:a.sec,end:b&&b.date===a.date&&b.sec>a.sec?b.sec:a.sec+1800,tech:t.length===d.length?t[i]:""}}).filter(Boolean)}
+// « à partir de 10h00 », « avant 17h », « entre 9h et 12h » ; « pour le 07/09 » limite la consigne à ce jour
+function consigneWin(txt){
+  const t=strip(txt||"").toUpperCase().replace(/\s+/g," ");const hm=(h,m)=>(+h)*3600+(+(m||0))*60;
+  let ws=null,we=null,m=/ENTRE (\d{1,2}) ?H ?(\d{2})? ET (\d{1,2}) ?H ?(\d{2})?/.exec(t);
+  if(m){ws=hm(m[1],m[2]);we=hm(m[3],m[4])}
+  else{m=/A PARTIR DE (\d{1,2}) ?H ?(\d{2})?/.exec(t);if(m)ws=hm(m[1],m[2]);
+    m=/AVANT (\d{1,2}) ?H ?(\d{2})?/.exec(t);if(m)we=hm(m[1],m[2])}
+  if(ws==null&&we==null)return null;
+  const d=/POUR LE (\d{2})\/(\d{2})/.exec(t);return{ws,we,md:d?d[2]+"-"+d[1]:null}}
+// « Patrick » correspond à « Patrick MACHADO » : chaque mot saisi doit figurer dans le nom prévu
+const nameTok=s=>strip(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim().split(" ").filter(Boolean);
+function nameMatch(entry,planned){const e=nameTok(entry),p=nameTok(planned);return e.length>0&&e.every(w=>p.includes(w))}
+
+return{decode,parseCSV,findAddress,findEtagePorte,slots,consigneWin,nameMatch}})();

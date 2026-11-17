@@ -44,11 +44,11 @@ test("liens : un arrêt, et la tournée découpée par 9 étapes avec retour au 
   const home=P(48.9,2.3),pts=Array.from({length:12},(_,i)=>P(48.9+i/100,2.3+i/100));
   assert.match(MAPC.gStop(pts[0]),/destination=48\.900000,2\.300000/);
   assert.match(MAPC.wazeStop(pts[0]),/ll=48\.900000,2\.300000/);
-  const t=MAPC.gTour(home,pts,pts.map((_,i)=>i));assert.equal(t.length,2);
+  const t=MAPC.gTour(home,pts,pts.map((_,i)=>i),home);assert.equal(t.length,2);
   assert.ok(t[0].includes("origin=48.900000,2.300000"));
   assert.ok(t[1].includes("destination=48.900000,2.300000"));
   assert.equal(decodeURIComponent(t[0].split("waypoints=")[1]).split("|").length,8);
-  assert.equal(MAPC.gTour(home,pts.slice(0,3),[0,1,2]).length,1)});
+  assert.equal(MAPC.gTour(home,pts.slice(0,3),[0,1,2],home).length,1)});
 
 test("adresses mal découpées : « 5TER », « LGT 7 », « - 03-306 », objet qui énumère tout un quartier",()=>{
   const r=o=>MAPC.fromRow(parse(["1",o,"C","T","S","","","","","x"]));
