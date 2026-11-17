@@ -42,3 +42,26 @@ summary{cursor:pointer;color:var(--mut);font-size:13px}
 .bar{height:8px;background:var(--bd);border-radius:4px;overflow:hidden;margin:6px 0 12px}.bar i{display:block;height:100%;background:var(--ok)}
 table.mo{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}table.mo td,table.mo th{padding:5px 4px;border-top:1px solid var(--bd);text-align:right}table.mo th:first-child,table.mo td:first-child{text-align:left}
 .res+.res{break-before:page}
+/* ---- Confort téléphone ---- */
+html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+body{overscroll-behavior-y:none;padding-bottom:env(safe-area-inset-bottom,0px)}
+input,textarea,select{font-size:16px}              /* évite le zoom automatique d'iOS */
+button,.btnlink,select{min-height:44px}            /* cibles tactiles >= 44 px */
+.ibar button,.trow button{min-height:40px}
+button:active{filter:brightness(.92)}
+.tabs{position:sticky;top:0;z-index:500;background:var(--bg);padding:6px 0;margin-top:-6px}
+#mgo{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:400;min-height:52px;font-weight:700;font-size:17px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+@media (max-width:480px){
+ main{padding:12px}
+ .trow{grid-template-columns:1fr 44px}.trow .tn{grid-column:1/-1}
+ .grid{grid-template-columns:1fr}
+ .tools>*{min-width:0}
+ .res .tools{display:grid;grid-template-columns:1fr 1fr}.res .tools>:first-child{grid-column:1/-1}
+}
+.leaflet-container{height:260px;border-radius:10px;touch-action:pan-x pan-y}
+.leaflet-bar a{width:40px!important;height:40px!important;line-height:40px!important}
+/* mode terrain : actions toujours sous le pouce */
+#field{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}
+#field .fbar{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--bd);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+#field .fbar button{min-height:56px;font-size:16px;font-weight:600}
+#field .fbar .ok{background:var(--ok);color:#fff;border-color:var(--ok)}

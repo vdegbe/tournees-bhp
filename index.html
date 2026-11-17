@@ -55,6 +55,29 @@ summary{cursor:pointer;color:var(--mut);font-size:13px}
 .bar{height:8px;background:var(--bd);border-radius:4px;overflow:hidden;margin:6px 0 12px}.bar i{display:block;height:100%;background:var(--ok)}
 table.mo{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}table.mo td,table.mo th{padding:5px 4px;border-top:1px solid var(--bd);text-align:right}table.mo th:first-child,table.mo td:first-child{text-align:left}
 .res+.res{break-before:page}
+/* ---- Confort téléphone ---- */
+html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+body{overscroll-behavior-y:none;padding-bottom:env(safe-area-inset-bottom,0px)}
+input,textarea,select{font-size:16px}              /* évite le zoom automatique d'iOS */
+button,.btnlink,select{min-height:44px}            /* cibles tactiles >= 44 px */
+.ibar button,.trow button{min-height:40px}
+button:active{filter:brightness(.92)}
+.tabs{position:sticky;top:0;z-index:500;background:var(--bg);padding:6px 0;margin-top:-6px}
+#mgo{position:sticky;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:400;min-height:52px;font-weight:700;font-size:17px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+@media (max-width:480px){
+ main{padding:12px}
+ .trow{grid-template-columns:1fr 44px}.trow .tn{grid-column:1/-1}
+ .grid{grid-template-columns:1fr}
+ .tools>*{min-width:0}
+ .res .tools{display:grid;grid-template-columns:1fr 1fr}.res .tools>:first-child{grid-column:1/-1}
+}
+.leaflet-container{height:260px;border-radius:10px;touch-action:pan-x pan-y}
+.leaflet-bar a{width:40px!important;height:40px!important;line-height:40px!important}
+/* mode terrain : actions toujours sous le pouce */
+#field{padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}
+#field .fbar{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--bd);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+#field .fbar button{min-height:56px;font-size:16px;font-weight:600}
+#field .fbar .ok{background:var(--ok);color:#fff;border-color:var(--ok)}
 
 /* required styles */
 
@@ -732,7 +755,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
    <b>Techniciens</b>
    <div id="trows"></div>
    <div class="tools"><button id="tadd">+ Ajouter un technicien</button></div>
-   <div class="msg">Le domicile est le départ et le retour. Il reste mémorisé dans ce navigateur seulement : il n’est pas écrit sur la fiche. Pour le placer sur la carte, l’adresse est envoyée au service d’adresses de l’État, et le lien de navigation de la tournée complète contient ses coordonnées.</div>
+   <div class="msg">Le domicile est le départ et le retour ; il reste mémorisé sur cet appareil.</div>
+   <details><summary>Confidentialité</summary><div class="msg">Il n’est pas écrit sur la fiche. Pour le placer sur la carte, l’adresse est envoyée au service d’adresses de l’État, et le lien de navigation de la tournée complète contient ses coordonnées.</div></details>
    <details style="margin-top:8px"><summary>Options de la journée</summary>
     <div class="grid" style="margin-top:8px">
      <div><label>Premier jour</label><input id="mdate" type="date"></div>
@@ -1372,8 +1396,11 @@ function act(a,ri){
 let FD={ri:0,i:0};
 const progKey=()=>"prog:"+ST.plan.id,prog=()=>ls.g(progKey())||{};
 const STATUS={fait:"Fait",absent:"Absent",impossible:"Impossible"};
-function openField(ri,i){FD={ri,i};let el=$("field");if(!el){el=document.createElement("div");el.id="field";document.body.appendChild(el)}drawField()}
-function closeField(){const el=$("field");if(el)el.remove();renderPlan(ST.plan)}
+let WL=null;
+async function keepAwake(){try{if(navigator.wakeLock&&!WL){WL=await navigator.wakeLock.request("screen");WL.addEventListener("release",()=>{WL=null})}}catch(e){}}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&$("field"))keepAwake()});
+function openField(ri,i){FD={ri,i};keepAwake();let el=$("field");if(!el){el=document.createElement("div");el.id="field";document.body.appendChild(el)}drawField()}
+function closeField(){const el=$("field");if(el)el.remove();try{if(WL){WL.release();WL=null}}catch(e){}renderPlan(ST.plan)}
 function setStatus(v){const p=prog();p[FD.ri+":"+FD.i]=v;ls.s(progKey(),p);
   const R=ST.plan.resources[FD.ri],n=R.stops.length;let k=FD.i+1;
   while(k<n&&p[FD.ri+":"+k])k++;
@@ -1400,7 +1427,7 @@ function drawField(){
    ${s.visits.map(v=>`<div class="big" style="font-size:17px">${v.etage||v.porte?`Étage ${esc(v.etage||"?")} · Porte ${esc(v.porte||"?")}`:"Logement"}</div><small>${esc([v.twimm&&"BI "+v.twimm,v.type,v.slotStart!=null&&`créneau ${EXP.hm(v.slotStart)}–${EXP.hm(v.slotEnd)}`].filter(Boolean).join(" · "))}</small>`).join("")}
    ${s.consigne?`<div class="det">Consigne : ${esc(s.consigne)}</div>`:""}${s.warn.map(w=>`<div class="det warn">${esc(w)}</div>`).join("")}
    <div class="tools"><a class="btnlink" target="_blank" rel="noopener" href="${MAPC.gStop(s.pt)}">Y aller · Google Maps</a><a class="btnlink" target="_blank" rel="noopener" href="${MAPC.wazeStop(s.pt)}">Waze</a></div>
-   <div class="tools"><button class="pri" id="fd">Fait</button><button id="fa">Absent</button><button id="fi">Impossible</button></div>
+   <div class="fbar"><button class="ok" id="fd">Fait</button><button id="fa">Absent</button><button id="fi">Impossible</button></div>
    <div class="tools"><button id="fp" ${FD.i?"":"disabled"}>‹ Précédent</button><button id="fn">Suivant ›</button></div>`;
   $("fx").onclick=closeField;$("fd").onclick=()=>setStatus("fait");$("fa").onclick=()=>setStatus("absent");$("fi").onclick=()=>setStatus("impossible");
   $("fp").onclick=()=>{FD.i=Math.max(0,FD.i-1);drawField()};$("fn").onclick=()=>{FD.i++;drawField()}}
