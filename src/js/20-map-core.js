@@ -66,6 +66,7 @@ const wazeStop=p=>"https://waze.com/ul?navigate=yes&ll="+q(p);
 // Google Maps accepte 9 étapes par lien : la tournée est découpée en parties. end = point d'arrivée, ou null pour finir au dernier arrêt.
 function gTour(start,pts,order,end){
   const stops=order.map(i=>pts[i]),out=[];if(!stops.length)return out;
+  if(!start){start=stops.shift();if(!stops.length&&!end)return out}   // sans départ imposé : on part du premier arrêt
   for(let i=0;i<stops.length;i+=9){
     const part=stops.slice(i,i+9),last=i+9>=stops.length,origin=i===0?start:stops[i-1];
     let dest,way;

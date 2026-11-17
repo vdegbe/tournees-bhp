@@ -27,7 +27,7 @@
    <b>Techniciens</b>
    <div id="trows"></div>
    <div class="tools"><button id="tadd">+ Ajouter un technicien</button></div>
-   <div class="msg">Le domicile est le départ et le retour ; il reste mémorisé sur cet appareil.</div>
+   <div class="msg">Par défaut, la tournée commence à la première intervention : le domicile est facultatif. S’il est renseigné, il peut servir de départ et de retour (Options de la journée). Il reste mémorisé sur cet appareil.</div>
    <details><summary>Confidentialité</summary><div class="msg">Il n’est pas écrit sur la fiche. Pour le placer sur la carte, l’adresse est envoyée au service d’adresses de l’État, et le lien de navigation de la tournée complète contient ses coordonnées.</div></details>
    <details style="margin-top:8px"><summary>Options de la journée</summary>
     <div class="grid" style="margin-top:8px">
@@ -37,8 +37,8 @@
      <div><label>Départ</label><input id="mstart" type="time" value="08:00"></div>
      <div><label>Fin de journée</label><input id="mend" type="time" value="17:30"></div>
      <div class="full"><label>Durée par défaut d’une intervention (minutes)</label><input id="mdur" type="number" min="5" max="480" value="30"></div>
-     <div><label>Point de départ</label><select id="mfrom"><option value="home">Domicile</option><option value="depot">Adresse commune</option></select></div>
-     <div><label>Fin de tournée</label><select id="mto"><option value="home">Retour au domicile</option><option value="last">Dernier arrêt</option><option value="depot">Adresse commune</option></select></div>
+     <div><label>Point de départ</label><select id="mfrom"><option value="first">Première intervention</option><option value="home">Domicile</option><option value="depot">Adresse commune</option></select></div>
+     <div><label>Fin de tournée</label><select id="mto"><option value="last">Dernier arrêt</option><option value="home">Retour au domicile (si renseigné)</option><option value="depot">Adresse commune</option></select></div>
      <div class="full"><label>Adresse commune (dépôt), si choisie ci-dessus</label><input id="mdepot" placeholder="n° rue, code postal, ville"></div>
     </div>
    </details>

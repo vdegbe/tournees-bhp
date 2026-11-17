@@ -65,9 +65,9 @@ function drawMap(R,ri){
   if(typeof L==="undefined"){$("map"+ri).innerHTML='<div class="msg">Carte indisponible.</div>';return}
   const map=L.map("map"+ri,{scrollWheelZoom:false});ST.maps.push(map);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© les contributeurs d’OpenStreetMap"}).addTo(map);
-  const ll=p=>[p.lat,p.lng],line=[R.startPt].concat(R.stops.map(s=>s.pt),R.endPt?[R.endPt]:[]);
+  const ll=p=>[p.lat,p.lng],line=(R.startPt?[R.startPt]:[]).concat(R.stops.map(s=>s.pt),R.endPt?[R.endPt]:[]);
   L.polyline(line.map(ll),{color:"#d41c1c",weight:3,opacity:.7,dashArray:"6 6"}).addTo(map);
-  L.marker(ll(R.startPt),{icon:L.divIcon({className:"mk home",html:"<span>D</span>",iconSize:[28,28]}),title:"Départ"}).addTo(map);
+  if(R.startPt)L.marker(ll(R.startPt),{icon:L.divIcon({className:"mk home",html:"<span>D</span>",iconSize:[28,28]}),title:"Départ"}).addTo(map);
   R.stops.forEach((s,i)=>L.marker(ll(s.pt),{icon:L.divIcon({className:"mk",html:`<span>${i+1}</span>`,iconSize:[28,28]}),title:s.adresse}).addTo(map));
   map.fitBounds(L.latLngBounds(line.map(ll)),{padding:[24,24]})}
 
